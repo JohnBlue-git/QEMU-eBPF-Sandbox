@@ -1,0 +1,20 @@
+# Build artifacts
+*.o
+*.bpf.o
+build/
+kernel/linux-*/
+images/
+.vscode/
+
+# Binaries
+#loader
+
+# System files
+.DS_Store
+.env
+.cache/
+
+# Swap/temp files
+*.swp
+*.swo
+*~

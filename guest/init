@@ -1,0 +1,93 @@
+#!/bin/sh
+
+# Guest init for QEMU eBPF demo
+mount -t proc proc /proc
+mount -t sysfs sysfs /sys
+mount -t tmpfs tmpfs /tmp
+mount -t devtmpfs devtmpfs /dev 2>/dev/null || true
+mkdir -p /dev /cgroup2
+mount -t cgroup2 none /cgroup2 2>/dev/null || true
+mknod /dev/null c 1 3 2>/dev/null || true
+mknod /dev/console c 5 1 2>/dev/null || true
+mknod /dev/tty c 5 0 2>/dev/null || true
+
+hostname ebpf-vm
+ifconfig lo 127.0.0.1 up 2>/dev/null || true
+
+# Pick a usable network interface for traffic generation and eBPF attach.
+# Prefer real device-backed interfaces and skip virtual tunnel pseudo-devices.
+is_usable_iface() {
+    case "$1" in
+        lo|sit*|ip6tnl*|tunl*|gre*|gretap*|erspan*|dummy*|ifb*)
+            return 1
+            ;;
+    esac
+    return 0
+}
+
+IFACE=""
+for n in $(ls /sys/class/net 2>/dev/null); do
+    if is_usable_iface "$n" && [ -e "/sys/class/net/$n/device" ]; then
+        IFACE="$n"
+        break
+    fi
+done
+
+if [ -z "$IFACE" ]; then
+    for n in $(ls /sys/class/net 2>/dev/null); do
+        if is_usable_iface "$n"; then
+            IFACE="$n"
+            break
+        fi
+    done
+fi
+
+if [ -n "$IFACE" ]; then
+    ifconfig "$IFACE" up 2>/dev/null || true
+    udhcpc -i "$IFACE" -q -n 2>/dev/null || true
+fi
+
+mount -t bpf bpf /sys/fs/bpf 2>/dev/null || true
+mkdir -p /sys/kernel/tracing
+mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
+mkdir -p /var/log/ebpf_basic_design
+
+if true; then
+    echo "[guest-init] eBPF artifacts under /opt/ebpf_basic_design"
+    ls -l /opt/ebpf_basic_design 2>/dev/null || true
+
+    if [ -x /opt/ebpf_basic_design/syscall_trace_loader ]; then
+        echo "[guest-init] starting syscall trace loader"
+        /opt/ebpf_basic_design/syscall_trace_loader >/var/log/ebpf_basic_design/syscall_trace_loader.log 2>&1 &
+    fi
+
+    if [ -x /opt/ebpf_basic_design/xdp_drop_loader ] && [ -n "$IFACE" ]; then
+        echo "[guest-init] starting XDP loader on $IFACE"
+        /opt/ebpf_basic_design/xdp_drop_loader "$IFACE" >/var/log/ebpf_basic_design/xdp_loader.log 2>&1 &
+    fi
+
+    if [ -x /opt/ebpf_basic_design/socket_filter_loader ]; then
+        if [ -n "$IFACE" ]; then
+            echo "[guest-init] starting socket filter loader on $IFACE"
+            /opt/ebpf_basic_design/socket_filter_loader "$IFACE" >/var/log/ebpf_basic_design/socket_filter.log 2>&1 &
+        else
+            echo "[guest-init] skip socket filter loader: no non-loopback interface"
+        fi
+    else
+        echo "[guest-init] socket_filter_loader not found, skipping"
+    fi
+
+    if [ -x /opt/ebpf_basic_design/cgroup_egress_loader ]; then
+        if [ -d /cgroup2 ]; then
+            echo "[guest-init] starting cgroup egress loader on /cgroup2"
+            /opt/ebpf_basic_design/cgroup_egress_loader /cgroup2 >/var/log/ebpf_basic_design/cgroup_egress.log 2>&1 &
+        else
+            echo "[guest-init] skip cgroup egress loader: /cgroup2 missing"
+        fi
+    else
+        echo "[guest-init] cgroup_egress_loader not found, skipping"
+    fi
+
+    echo "[guest-init] ready. Logs: /var/log/ebpf_basic_design/syscall_trace_loader.log /var/log/ebpf_basic_design/xdp_loader.log /var/log/ebpf_basic_design/socket_filter.log /var/log/ebpf_basic_design/cgroup_egress.log"
+    exec /bin/sh
+fi
