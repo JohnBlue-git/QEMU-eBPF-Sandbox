@@ -52,7 +52,7 @@ mkdir -p /sys/kernel/tracing
 mount -t tracefs tracefs /sys/kernel/tracing 2>/dev/null || true
 mkdir -p /var/log/ebpf_basic_design
 
-if true; then
+if false; then
     echo "[guest-init] eBPF artifacts under /opt/ebpf_basic_design"
     ls -l /opt/ebpf_basic_design 2>/dev/null || true
 
@@ -89,5 +89,20 @@ if true; then
     fi
 
     echo "[guest-init] ready. Logs: /var/log/ebpf_basic_design/syscall_trace_loader.log /var/log/ebpf_basic_design/xdp_loader.log /var/log/ebpf_basic_design/socket_filter.log /var/log/ebpf_basic_design/cgroup_egress.log"
+    exec /bin/sh
+fi
+
+if true; then
+    echo "[guest-init] eBPF artifacts under /opt/ebpf_oop_design"
+    ls -l /opt/ebpf_oop_design 2>/dev/null || true
+
+    if [ -x /opt/ebpf_oop_design/xdp_drop_loader ] && [ -n "$IFACE" ]; then
+        echo "[guest-init] starting XDP loader on $IFACE"
+        /opt/ebpf_oop_design/xdp_drop_loader "$IFACE" >/var/log/ebpf_basic_design/xdp_loader.log 2>&1 &
+    else
+        echo "[guest-init] xdp_drop_loader not found or no usable interface, skipping"
+    fi
+
+    echo "[guest-init] ready. Logs: /var/log/ebpf_basic_design/xdp_loader.log"
     exec /bin/sh
 fi
