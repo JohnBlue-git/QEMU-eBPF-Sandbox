@@ -22,52 +22,74 @@ find_package(Threads REQUIRED)
 
 set(EOPPD_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(EOPPD_BUILD_DIR ${CMAKE_BINARY_DIR})
-set(EOPPD_BPF_SOURCE ${EOPPD_SOURCE_DIR}/xdp_drop/xdp_drop.bpf.c)
-set(EOPPD_BPF_OBJECT ${EOPPD_BUILD_DIR}/xdp_drop.bpf.o)
-set(EOPPD_VMLINUX_HEADER ${EOPPD_SOURCE_DIR}/../eBPF_basic_design/vmlinux.h)
+set(EOPPD_BPF_SOURCES
+    ${EOPPD_SOURCE_DIR}/xdp_drop/xdp_drop.bpf.c
+    ${EOPPD_SOURCE_DIR}/syscall_trace/syscall_trace.bpf.c
+    ${EOPPD_SOURCE_DIR}/socket_filter/socket_filter.bpf.c
+    ${EOPPD_SOURCE_DIR}/cgroup_egress/cgroup_egress.bpf.c
+)
+set(EOPPD_BPF_OBJECTS
+    xdp_drop.bpf.o
+    syscall_trace.bpf.o
+    socket_filter.bpf.o
+    cgroup_egress.bpf.o
+)
+set(EOPPD_VMLINUX_HEADER vmlinux.h)
 set(EOPPD_VMLINUX_BTF /sys/kernel/btf/vmlinux)
 
 add_custom_command(
     OUTPUT ${EOPPD_VMLINUX_HEADER}
-    COMMAND ${CMAKE_COMMAND} -E echo "Generating CO-RE header: ${EOPPD_VMLINUX_HEADER}"
-    COMMAND ${CMAKE_COMMAND} -E sh -c "${BPFOOL_EXECUTABLE} btf dump file '${EOPPD_VMLINUX_BTF}' format c > '${EOPPD_VMLINUX_HEADER}'"
+    COMMAND sh -c "test -r '${EOPPD_VMLINUX_BTF}'"
+    COMMAND sh -c "command -v ${BPFOOL_EXECUTABLE}"
+    COMMAND sh -c "echo 'Generating CO-RE header: ${EOPPD_VMLINUX_HEADER}'"
+    COMMAND sh -c "rm -f ${EOPPD_VMLINUX_HEADER}"
+    COMMAND sh -c "${BPFOOL_EXECUTABLE} btf dump file '${EOPPD_VMLINUX_BTF}' format c >${EOPPD_VMLINUX_HEADER}"
+    WORKING_DIRECTORY ${EOPPD_BUILD_DIR}
     DEPENDS ${EOPPD_VMLINUX_BTF}
     COMMENT "Generating CO-RE header"
 )
 
-add_custom_command(
-    OUTPUT ${EOPPD_BPF_OBJECT}
-    COMMAND ${CMAKE_COMMAND} -E make_directory ${EOPPD_BUILD_DIR}
-    COMMAND ${CLANG_EXECUTABLE} -I${EOPPD_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_SOURCE_DIR}/../eBPF_basic_design -O2 -g -target bpf -c ${EOPPD_BPF_SOURCE} -o ${EOPPD_BPF_OBJECT}
-    DEPENDS ${EOPPD_BPF_SOURCE} ${EOPPD_VMLINUX_HEADER}
-    COMMENT "Compiling XDP BPF object"
-)
 
-add_custom_target(xdp_drop_bpf_object DEPENDS ${EOPPD_BPF_OBJECT})
+# Macro to generate bpf object build rules for each example
+foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
+    set(BPF_SRC ${EOPPD_SOURCE_DIR}/${example}/${example}.bpf.c)
+    set(BPF_OBJ ${example}.bpf.o)
+    add_custom_command(
+        OUTPUT ${BPF_OBJ}
+        WORKING_DIRECTORY ${EOPPD_BUILD_DIR}
+        COMMAND ${CLANG_EXECUTABLE} -I${EOPPD_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_BUILD_DIR} -O2 -g -target bpf -c ${BPF_SRC} -o ${BPF_OBJ}
+        DEPENDS ${BPF_SRC} ${EOPPD_VMLINUX_HEADER}
+        COMMENT "Compiling ${example} BPF object"
+    )
+    list(APPEND BPF_OBJECTS ${BPF_OBJ})
+endforeach()
+add_custom_target(all_bpf_objects DEPENDS ${BPF_OBJECTS})
 
 include_directories(
     ${EOPPD_SOURCE_DIR}/coroutine
-    ${EOPPD_SOURCE_DIR}/bpf
+    ${EOPPD_SOURCE_DIR}/ebpf
     ${EOPPD_SOURCE_DIR}/xdp_drop
     ${EOPPD_SOURCE_DIR}/action
     ${EOPPD_SOURCE_DIR}/log_action
     ${LIBBPF_INCLUDE_DIR}
-    ${EOPPD_SOURCE_DIR}/../eBPF_basic_design
+    ${EOPPD_BUILD_DIR}
 )
 
-add_executable(xdp_drop_loader
-    xdp_drop/main.cpp
-    xdp_drop/xdp_drop.cpp
-    bpf/BpfProgram.cpp
-    action/ActionLoop.cpp
-    log_action/LogAction.cpp
-)
 
-target_link_libraries(xdp_drop_loader PRIVATE ${LIBBPF_LIBRARY} ${LIBELF_LIBRARY} ${LIBZ_LIBRARY} Threads::Threads)
-add_dependencies(xdp_drop_loader xdp_drop_bpf_object)
-
-install(FILES ${EOPPD_BPF_OBJECT} DESTINATION /opt/ebpf_oop_design)
-install(TARGETS xdp_drop_loader DESTINATION /opt/ebpf_oop_design)
-install(FILES ${EOPPD_SOURCE_DIR}/xdp_drop/xdp_drop.bpf.c DESTINATION /opt/ebpf_oop_design/xdp_drop)
+# Macro to generate loader build/install rules for each example
+foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
+    add_executable(${example}_loader
+        ${example}/main.cpp
+        ${example}/${example}.cpp
+        ebpf/BpfProgram.cpp
+        action/ActionLoop.cpp
+        log_action/LogAction.cpp
+    )
+    target_link_libraries(${example}_loader PRIVATE ${LIBBPF_LIBRARY} ${LIBELF_LIBRARY} ${LIBZ_LIBRARY} Threads::Threads)
+    add_dependencies(${example}_loader all_bpf_objects)
+    install(FILES ${EOPPD_BUILD_DIR}/${example}.bpf.o DESTINATION /opt/ebpf_oop_design)
+    install(TARGETS ${example}_loader DESTINATION /opt/ebpf_oop_design)
+    install(FILES ${EOPPD_SOURCE_DIR}/${example}/${example}.bpf.c DESTINATION /opt/ebpf_oop_design/${example})
+endforeach()
 
 message(STATUS "ebpf_oop_design configured")

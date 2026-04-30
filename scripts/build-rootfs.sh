@@ -24,6 +24,7 @@ fi
 
 echo "Building eBPF artifacts for guest image..."
 make -C eBPF_basic_design all
+make ebpf_oop
 
 # Prepare staging rootfs directory
 rm -rf "$ROOTFS_DIR"
@@ -62,9 +63,16 @@ for app in ifconfig ip udhcpc hostname; do
 done
 
 # Package eBPF artifacts into rootfs
+
+# Package eBPF_basic_design artifacts
 mkdir -p "$ROOTFS_DIR/opt/ebpf_basic_design"
 cp eBPF_basic_design/build/*.bpf.o "$ROOTFS_DIR/opt/ebpf_basic_design/"
 cp eBPF_basic_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_basic_design/"
+
+# Package eBPF_oop_design artifacts
+mkdir -p "$ROOTFS_DIR/opt/ebpf_oop_design"
+cp eBPF_oop_design/build/*.bpf.o "$ROOTFS_DIR/opt/ebpf_oop_design/" 2>/dev/null || true
+cp eBPF_oop_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_oop_design/" 2>/dev/null || true
 
 # Copy required shared libraries for user-space loaders
 copy_lib() {
@@ -80,6 +88,9 @@ copy_lib /lib/x86_64-linux-gnu/libz.so.1
 copy_lib /lib/x86_64-linux-gnu/libzstd.so.1
 copy_lib /lib/x86_64-linux-gnu/libc.so.6
 copy_lib /lib64/ld-linux-x86-64.so.2
+copy_lib /usr/lib/x86_64-linux-gnu/libstdc++.so.6
+copy_lib /lib/x86_64-linux-gnu/libgcc_s.so.1
+copy_lib /lib/x86_64-linux-gnu/libm.so.6
 
 # Install guest init script
 if [ -f guest/init ]; then

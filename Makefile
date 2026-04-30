@@ -48,7 +48,8 @@ ebpf_basic:
 
 ebpf_oop:
 	@echo "Building eBPF OOP design example..."
-	@$(MAKE) -C eBPF_oop_design all
+	cmake -S eBPF_oop_design -B eBPF_oop_design/build
+	cmake --build eBPF_oop_design/build
 
 rootfs:
 	@echo "Building rootfs..."
@@ -80,7 +81,7 @@ clean_ebpf_basic:
 
 clean_ebpf_oop:
 	@echo "Cleaning eBPF OOP artifacts..."
-	@$(MAKE) -C eBPF_oop_design clean
+	rm -rf eBPF_oop_design/build
 	@echo "✓ eBPF OOP clean complete"
 
 clean_rootfs:

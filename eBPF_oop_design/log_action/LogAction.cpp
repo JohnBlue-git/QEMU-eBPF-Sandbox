@@ -3,14 +3,12 @@
 
 #include "LogAction.hpp"
 
+AsyncFileMutex LogAction::g_file_mgr;
+
 LogAction::LogAction(std::string message, std::string path)
     : message_(std::move(message))
     , path_(std::move(path))
-{
-    if (!ensure_log_directory(path_)) {
-        throw std::runtime_error("Failed to create log directory for " + path_);
-    }
-}
+{}
 
 bool LogAction::ensure_log_directory(const std::string& path) noexcept
 {
@@ -30,10 +28,13 @@ bool LogAction::ensure_log_directory(const std::string& path) noexcept
 
 task<void> LogAction::execute_async()
 {
+    co_await LogAction::g_file_mgr.lock(path_);
+
     std::ofstream file(path_, std::ios::app);
     if (file.is_open()) {
         file << message_ << "\n";
         file.flush();
     }
-    co_return;
+
+    LogAction::g_file_mgr.unlock(path_);
 }

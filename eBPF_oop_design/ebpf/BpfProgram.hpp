@@ -15,21 +15,29 @@ public:
     BpfProgram(BpfProgram&& other) noexcept;
     BpfProgram& operator=(BpfProgram&& other) noexcept;
 
-    virtual bool loadFilter();
-    void detach() noexcept;
     bool isLoaded() const noexcept;
+    bool loadFilter() noexcept;
+    void detachFilter() noexcept;
+    int pollEvents(int timeout_ms) noexcept;
 
 protected:
-    virtual bool attachProgram() = 0;
+    bool openObject() noexcept;
+    void closeObject() noexcept;
+
+    int getProgramFd(const std::string& prog_name) const noexcept;
+    virtual bool attachProgram() noexcept = 0;
     virtual void detachProgram() noexcept = 0;
 
-    bool openObject() noexcept;
     int getMapFd(const std::string& map_name) const noexcept;
-    int getProgramFd(const std::string& prog_name) const noexcept;
+    bool registerEventHandler() noexcept;
+    virtual int (*getRingBufferHandler())(void*, void*, size_t) = 0;
 
+    int pollRingBuffer(int timeout_ms) noexcept;
+    void releaseRingBuffer() noexcept;
+
+    bool loaded_;
     std::string objectPath_;
     struct bpf_object *object_;
-    bool loaded_;
+    struct ring_buffer *ring_buffer_;
 };
-
 #endif // EBPF_OOP_DESIGN_BPF_PROGRAM_HPP

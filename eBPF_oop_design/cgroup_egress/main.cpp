@@ -1,11 +1,14 @@
 #include <csignal>
+#include <cstdarg>
 #include <cstdio>
 #include <cstring>
 #include <string>
 #include <unistd.h>
 #include <vector>
 
-#include "../xdp_drop/xdp_drop.hpp"
+#include <bpf/libbpf.h>
+
+#include "cgroup_egress.hpp"
 #include "../action/ActionLoop.hpp"
 #include "../log_action/LogAction.hpp"
 
@@ -38,22 +41,22 @@ static bool findObject(const std::vector<std::string>& candidates, std::string& 
 
 int main(int argc, char* argv[])
 {
-    const char* interface = argc > 1 ? argv[1] : "lo";
+    const char *cgroup_path = argc > 1 ? argv[1] : "/sys/fs/cgroup";
 
     std::vector<std::string> object_candidates = {
-        "/opt/ebpf_oop_design/xdp_drop.bpf.o",
-        "./xdp_drop.bpf.o",
-        "build/xdp_drop.bpf.o",
+        "/opt/ebpf_oop_design/cgroup_egress.bpf.o",
+        "./cgroup_egress.bpf.o",
+        "build/cgroup_egress.bpf.o",
     };
 
     std::vector<std::string> log_candidates = {
-        "/var/log/ebpf_oop_design/xdp_drop.events.log",
-        "./xdp_drop.events.log",
+        "/var/log/ebpf_oop_design/cgroup_egress.events.log",
+        "./cgroup_egress.events.log",
     };
 
     std::string object_path;
     if (!findObject(object_candidates, object_path)) {
-        std::fprintf(stderr, "Error: xdp_drop.bpf.o not found\n");
+        std::fprintf(stderr, "Error: cgroup_egress.bpf.o not found\n");
         return 1;
     }
 
@@ -61,6 +64,8 @@ int main(int argc, char* argv[])
     if (!findObject(log_candidates, log_path)) {
         log_path = log_candidates.front();
     }
+
+    libbpf_set_print(libbpf_print_fn);
 
     // Ensure log directory exists
     if (!LogAction::ensure_log_directory(log_path)) {
@@ -71,13 +76,13 @@ int main(int argc, char* argv[])
     signal(SIGINT, handleSignal);
     signal(SIGTERM, handleSignal);
 
-    XdpDropProgram program(object_path, interface, log_path);
+    CgroupEgressProgram program(object_path, cgroup_path, log_path);
     if (!program.loadFilter()) {
         std::fprintf(stderr, "Error: failed to load filter\n");
         return 1;
     }
 
-    std::printf("XDP program loaded on %s using %s\n", interface, object_path.c_str());
+    std::printf("Cgroup egress program loaded using %s\n", object_path.c_str());
     std::printf("Writing events asynchronously to %s\n", log_path.c_str());
     std::printf("Press Ctrl+C to exit.\n");
 

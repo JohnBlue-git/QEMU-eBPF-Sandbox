@@ -24,8 +24,9 @@ XdpDropProgram::XdpDropProgram(std::string object_path,
       interface_(std::move(interface)),
       log_path_(std::move(log_path)),
       ifindex_(0),
-      ring_buffer_(nullptr)
+      attached_(false)
 {
+    this->ifindex_ = if_nametoindex(this->interface_.c_str());
 }
 
 XdpDropProgram::XdpDropProgram(XdpDropProgram&& other) noexcept
@@ -33,93 +34,63 @@ XdpDropProgram::XdpDropProgram(XdpDropProgram&& other) noexcept
       interface_(std::move(other.interface_)),
       log_path_(std::move(other.log_path_)),
       ifindex_(other.ifindex_),
-      ring_buffer_(other.ring_buffer_)
+      attached_(other.attached_)
 {
     other.ifindex_ = 0;
-    other.ring_buffer_ = nullptr;
+    other.attached_ = false;
 }
 
 XdpDropProgram& XdpDropProgram::operator=(XdpDropProgram&& other) noexcept
 {
     if (this != &other) {
         BpfProgram::operator=(std::move(other));
-        interface_ = std::move(other.interface_);
-        log_path_ = std::move(other.log_path_);
-        ifindex_ = other.ifindex_;
-        ring_buffer_ = other.ring_buffer_;
+
+        this->ifindex_ = other.ifindex_;
+        this->attached_ = other.attached_;
+        this->interface_ = std::move(other.interface_);
+        this->log_path_ = std::move(other.log_path_);
 
         other.ifindex_ = 0;
-        other.ring_buffer_ = nullptr;
+        other.attached_ = false;
     }
     return *this;
 }
 
 XdpDropProgram::~XdpDropProgram() noexcept
-{
-    detach();
-}
+{}
 
-bool XdpDropProgram::loadFilter()
+bool XdpDropProgram::attachProgram() noexcept
 {
-    ifindex_ = if_nametoindex(interface_.c_str());
-    if (!ifindex_) {
-        std::fprintf(stderr, "Error: interface '%s' not found\n", interface_.c_str());
+    if (!this->ifindex_) {
+        std::fprintf(stderr, "Error: interface '%s' not found\n", this->interface_.c_str());
         return false;
     }
 
-    if (!BpfProgram::loadFilter())
-        return false;
-
-    int map_fd = getMapFd("events");
-    if (map_fd < 0) {
-        std::fprintf(stderr, "Error: failed to find events map\n");
-        return false;
-    }
-
-    ring_buffer_ = ring_buffer__new(map_fd, ringBufferHandler, this, nullptr);
-    if (!ring_buffer_) {
-        std::fprintf(stderr, "Error: failed to create ring buffer\n");
-        return false;
-    }
-
-    return true;
-}
-
-bool XdpDropProgram::attachProgram()
-{
     int prog_fd = getProgramFd("xdp_pass");
     if (prog_fd < 0) {
         std::fprintf(stderr, "Error: xdp program not found\n");
         return false;
     }
 
-    if (bpf_xdp_attach(ifindex_, prog_fd, XDP_FLAGS_UPDATE_IF_NOEXIST, nullptr) < 0) {
+    if (bpf_xdp_attach(this->ifindex_, prog_fd, XDP_FLAGS_UPDATE_IF_NOEXIST, nullptr) < 0) {
         std::fprintf(stderr, "Error: failed to attach XDP program\n");
         return false;
     }
-
+    attached_ = true;
     return true;
 }
 
 void XdpDropProgram::detachProgram() noexcept
 {
-    if (ring_buffer_) {
-        ring_buffer__free(ring_buffer_);
-        ring_buffer_ = nullptr;
-    }
-
-    if (ifindex_) {
-        bpf_xdp_detach(ifindex_, XDP_FLAGS_UPDATE_IF_NOEXIST, nullptr);
-        ifindex_ = 0;
+    if (this->attached_) {
+        bpf_xdp_detach(this->ifindex_, XDP_FLAGS_UPDATE_IF_NOEXIST, nullptr);
+        this->attached_ = false;
     }
 }
 
-int XdpDropProgram::pollEvents(int timeout_ms) const noexcept
+auto XdpDropProgram::getRingBufferHandler() -> int(*)(void*, void*, size_t)
 {
-    if (!ring_buffer_)
-        return -1;
-
-    return ring_buffer__poll(ring_buffer_, timeout_ms);
+    return &XdpDropProgram::ringBufferHandler;
 }
 
 int XdpDropProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz)
@@ -142,5 +113,6 @@ int XdpDropProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz)
         self->log_path_
     );
     ActionLoop::getInstance().pushAction(std::move(action));
+
     return 0;
 }

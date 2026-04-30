@@ -30,6 +30,8 @@ struct task {
 
     bool ready() const { return !coro || coro.done(); }
 
+    void resume() { if (coro) coro.resume(); }
+
     T get() {
         while (coro && !coro.done()) {
             coro.resume();
@@ -120,6 +122,8 @@ struct task<void> {
     }
 
     bool ready() const { return !coro || coro.done(); }
+
+    void resume() { if (coro) coro.resume(); }
 
     void get() {
         while (coro && !coro.done()) {
