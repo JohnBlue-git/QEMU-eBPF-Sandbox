@@ -1,5 +1,4 @@
-#ifndef EBPF_OOP_DESIGN_XDP_DROP_HPP
-#define EBPF_OOP_DESIGN_XDP_DROP_HPP
+#pragma once
 
 #include <string>
 
@@ -25,5 +24,3 @@ private:
     std::string interface_;
     std::string log_path_;
 };
-
-#endif // EBPF_OOP_DESIGN_XDP_DROP_HPP

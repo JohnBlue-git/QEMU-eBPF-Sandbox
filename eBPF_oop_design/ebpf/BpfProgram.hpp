@@ -1,5 +1,4 @@
-#ifndef EBPF_OOP_DESIGN_BPF_PROGRAM_HPP
-#define EBPF_OOP_DESIGN_BPF_PROGRAM_HPP
+#pragma once
 
 #include <string>
 #include <bpf/libbpf.h>
@@ -40,4 +39,3 @@ protected:
     struct bpf_object *object_;
     struct ring_buffer *ring_buffer_;
 };
-#endif // EBPF_OOP_DESIGN_BPF_PROGRAM_HPP

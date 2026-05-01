@@ -1,25 +1,24 @@
-#ifndef EBPF_OOP_DESIGN_TASK_HPP
-#define EBPF_OOP_DESIGN_TASK_HPP
+#pragma once
 
 #include <coroutine>
 #include <exception>
 #include <utility>
 
 template <typename T>
-struct task {
+struct Task {
     struct promise_type;
     using handle_type = std::coroutine_handle<promise_type>;
 
-    task(handle_type h) : coro(h) {}
-    task(task &&other) noexcept : coro(other.coro) { other.coro = nullptr; }
-    task(const task &) = delete;
-    ~task() {
+    Task(handle_type h) : coro(h) {}
+    Task(Task &&other) noexcept : coro(other.coro) { other.coro = nullptr; }
+    Task(const Task &) = delete;
+    ~Task() {
         if (coro) {
             coro.destroy();
         }
     }
 
-    task &operator=(task &&other) noexcept {
+    Task &operator=(Task &&other) noexcept {
         if (this != &other) {
             if (coro) coro.destroy();
             coro = other.coro;
@@ -75,7 +74,7 @@ struct task {
         std::exception_ptr exception;
 
         auto get_return_object() {
-            return task{handle_type::from_promise(*this)};
+            return Task{handle_type::from_promise(*this)};
         }
 
         auto initial_suspend() noexcept {
@@ -99,20 +98,20 @@ struct task {
 };
 
 template <>
-struct task<void> {
+struct Task<void> {
     struct promise_type;
     using handle_type = std::coroutine_handle<promise_type>;
 
-    task(handle_type h) : coro(h) {}
-    task(task &&other) noexcept : coro(other.coro) { other.coro = nullptr; }
-    task(const task &) = delete;
-    ~task() {
+    Task(handle_type h) : coro(h) {}
+    Task(Task &&other) noexcept : coro(other.coro) { other.coro = nullptr; }
+    Task(const Task &) = delete;
+    ~Task() {
         if (coro) {
             coro.destroy();
         }
     }
 
-    task &operator=(task &&other) noexcept {
+    Task &operator=(Task &&other) noexcept {
         if (this != &other) {
             if (coro) coro.destroy();
             coro = other.coro;
@@ -165,7 +164,7 @@ struct task<void> {
         std::exception_ptr exception;
 
         auto get_return_object() {
-            return task{handle_type::from_promise(*this)};
+            return Task{handle_type::from_promise(*this)};
         }
 
         auto initial_suspend() noexcept {
@@ -185,5 +184,3 @@ struct task<void> {
 
     handle_type coro;
 };
-
-#endif // EBPF_OOP_DESIGN_TASK_HPP

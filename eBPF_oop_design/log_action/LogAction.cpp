@@ -26,7 +26,7 @@ bool LogAction::ensure_log_directory(const std::string& path) noexcept
     return !ec;
 }
 
-task<void> LogAction::execute_async()
+Task<void> LogAction::execute_async()
 {
     co_await LogAction::g_file_mgr.lock(path_);
 

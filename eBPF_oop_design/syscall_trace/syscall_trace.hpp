@@ -1,5 +1,4 @@
-#ifndef EBPF_OOP_DESIGN_SYSCALL_TRACE_HPP
-#define EBPF_OOP_DESIGN_SYSCALL_TRACE_HPP
+#pragma once
 
 #include <string>
 #include <bpf/libbpf.h>
@@ -29,4 +28,3 @@ private:
     struct bpf_link *link_read_;
     struct bpf_link *link_write_;
 };
-#endif // EBPF_OOP_DESIGN_SYSCALL_TRACE_HPP

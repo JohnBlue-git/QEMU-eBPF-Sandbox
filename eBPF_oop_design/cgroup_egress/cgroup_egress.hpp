@@ -1,5 +1,4 @@
-#ifndef EBPF_OOP_DESIGN_CGROUP_EGRESS_HPP
-#define EBPF_OOP_DESIGN_CGROUP_EGRESS_HPP
+#pragma once
 
 #include <string>
 #include <bpf/libbpf.h>
@@ -26,4 +25,3 @@ private:
     struct bpf_link *link_;
     int cgroup_fd_;
 };
-#endif // EBPF_OOP_DESIGN_CGROUP_EGRESS_HPP

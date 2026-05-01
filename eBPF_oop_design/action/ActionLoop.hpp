@@ -1,5 +1,4 @@
-#ifndef EBPF_OOP_DESIGN_ACTION_LOOP_HPP
-#define EBPF_OOP_DESIGN_ACTION_LOOP_HPP
+#pragma once
 
 #include <memory>
 #include <queue>
@@ -12,7 +11,7 @@
 class IAction {
 public:
     virtual ~IAction() = default;
-    virtual task<void> execute_async() = 0;
+    virtual Task<void> execute_async() = 0;
 };
 
 class ActionLoop {
@@ -38,5 +37,3 @@ private:
     std::thread thread_;
     bool stop_ = false;
 };
-
-#endif // EBPF_OOP_DESIGN_ACTION_LOOP_HPP
