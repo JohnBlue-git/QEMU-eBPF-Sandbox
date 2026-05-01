@@ -7,6 +7,7 @@
 #include <condition_variable>
 
 #include "../coroutine/task.hpp"
+#include "../coroutine/fire_forget.hpp"
 
 class IAction {
 public:
@@ -23,7 +24,7 @@ public:
     ~ActionLoop() noexcept;
 
     // Push a new action to the queue
-    void pushAction(std::unique_ptr<IAction> action) noexcept;
+    FireForget pushAction(std::unique_ptr<IAction> action) noexcept;
 
 private:
     ActionLoop() noexcept;

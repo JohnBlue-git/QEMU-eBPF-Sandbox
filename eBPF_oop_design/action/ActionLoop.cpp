@@ -19,15 +19,18 @@ ActionLoop& ActionLoop::getInstance() noexcept
     return instance;
 }
 
-void ActionLoop::pushAction(std::unique_ptr<IAction> action) noexcept {
+FireForget ActionLoop::pushAction(std::unique_ptr<IAction> action) noexcept
+{
     {
         std::lock_guard lock(mutex_);
         queue_.push(std::move(action));
     }
     cv_.notify_one();
+    co_return;
 }
 
-void ActionLoop::pump() noexcept {
+void ActionLoop::pump() noexcept
+{
     while (true) {
         std::unique_ptr<IAction> action;
         {
