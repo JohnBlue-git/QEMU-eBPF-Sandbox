@@ -1,12 +1,16 @@
 # How To eBPF - QEMU on GitHub Codespace
 
-A practical eBPF development environment using QEMU, optimized for GitHub Codespace with 2 CPUs.
+A practical eBPF development environment using QEMU, optimized for GitHub Codespace with 2 CPUs. Includes both procedural and object-oriented eBPF program designs.
 
 ## Features
 
 - **Lightweight QEMU VM**: Minimal Linux kernel + BusyBox for resource efficiency
-- **eBPF Programs**: XDP (eXpress Data Path) and syscall tracing examples
+- **Two eBPF Design Patterns**:
+  - **eBPF Basic Design**: Procedural C implementation with libbpf, CO-RE, and BTF metadata
+  - **eBPF OOP Design**: Modern C++ object-oriented architecture with coroutines and async event handling
+- **Multiple eBPF Programs**: XDP, syscall tracing, socket filtering, and cgroup egress examples
 - **Host & Guest Development**: Run eBPF programs on both the host and inside QEMU
+- **Async Event Processing**: Coroutine-based asynchronous logging and action queue system
 - **Quick Setup**: Automated dependency installation and image building
 
 ## Architecture
@@ -17,7 +21,7 @@ A practical eBPF development environment using QEMU, optimized for GitHub Codesp
 ├─────────────────────────────────────────┤
 │  Host System (Ubuntu)                   │
 │  - QEMU/KVM                             │
-│  - libbpf, clang/llvm, bpftool         │
+│  - libbpf, clang/llvm, bpftool          │
 │  - eBPF development tools               │
 ├─────────────────────────────────────────┤
 │  QEMU Guest (Alpine Linux + BusyBox)    │
@@ -27,59 +31,49 @@ A practical eBPF development environment using QEMU, optimized for GitHub Codesp
 └─────────────────────────────────────────┘
 ```
 
-## Quick Start
+## eBPF Design Approaches
 
-### 1. Install Dependencies
-```bash
-make setup
-```
+This project provides two distinct design patterns for eBPF program development:
 
-### 2. Build Everything
-```bash
-make build
-```
+### eBPF Basic Design (Procedural C)
 
-This builds in this order:
-1. Kernel
-2. eBPF programs
-3. Rootfs image (packages `/opt/ebpf_basic_design` for guest)
+Located in `eBPF_basic_design/`, this design uses procedural C with modern eBPF tooling:
 
-### 3. Run QEMU with eBPF
-```bash
-make qemu-net
+- **Language**: C with libbpf
+- **CO-RE & BTF**: Compile-once, run-anywhere capability using kernel BTF metadata
+- **Type Safety**: Generated `vmlinux.h` from kernel BTF replaces hand-written type shims
+- **Logging**: Simple synchronous logging with shared utilities
+- **Use Cases**: 
+  - Learning eBPF fundamentals
+  - High-performance filtering with minimal overhead
+  - Simple event logging and counting
 
-# In QEMU guest, check auto-load logs
-tail -f /var/log/ebpf_basic_design/syscall_trace_loader.log
-tail -f /var/log/ebpf_basic_design/xdp_loader.log
+**Programs Included**:
+- `xdp_drop`: Fast packet filtering at network ingress
+- `syscall_trace`: Monitor syscall events kernel-wide
+- `socket_filter`: Per-socket packet filtering
+- `cgroup_egress`: Network filtering at cgroup boundaries
 
-# Ring buffer event logs (async writer)
-tail -f /var/log/ebpf_basic_design/syscall_trace.events.log
-tail -f /var/log/ebpf_basic_design/xdp_drop.events.log
-```
+### eBPF OOP Design (Modern C++)
 
-Note: `make rootfs` packages `eBPF_basic_design/build/*.bpf.o` and loaders into `/opt/ebpf_basic_design` inside the VM image.
-`guest/init` is used as the VM init process and will auto-attempt to load eBPF samples at boot.
+Located in `eBPF_oop_design/`, this design emphasizes modularity and asynchronous processing:
 
-### 4. (Optional) Rebuild eBPF, Host-side eBPF Test/Load
-```bash
-# Build
-make ebpf_basic
+- **Language**: C++ with CMake
+- **Architecture**: Event-driven with decoupled kernel event generation and user-space processing
+- **Async Processing**: C++20 coroutines for non-blocking event handling
+- **Modularity**: Base `BpfProgram` class for code reuse across different eBPF types
+- **Action Pattern**: ActionLoop singleton dispatcher with thread-safe queues
+- **Use Cases**:
+  - Production monitoring systems requiring scalability
+  - Complex event processing pipelines
+  - Integration with larger C++ applications
+  - Asynchronous logging at high throughput
 
-# Validate build artifacts and environment
-./scripts/run_eBPF_basic_design.sh test
-
-# Load XDP sample (requires root)
-sudo ./scripts/run_eBPF_basic_design.sh xdp lo
-
-# Load syscall trace sample (requires root)
-sudo ./scripts/run_eBPF_basic_design.sh trace
-
-# Load socket filter sample (requires root)
-sudo ./scripts/run_eBPF_basic_design.sh socket lo
-
-# Load cgroup egress filter sample (requires root)
-sudo ./scripts/run_eBPF_basic_design.sh cgroup /sys/fs/cgroup
-```
+**Key Features**:
+- `ActionLoop`: Singleton dispatcher for async action execution
+- `LogAction`: Async file I/O with coroutines
+- `AsyncFileMutex`: Thread-safe file operations in coroutine context
+- Thread-safe ring buffer event polling
 
 ## Project Structure
 
@@ -91,12 +85,33 @@ sudo ./scripts/run_eBPF_basic_design.sh cgroup /sys/fs/cgroup
 │   ├── build-kernel.sh      # Build minimal Linux kernel
 │   ├── build-rootfs.sh      # Build filesystem image
 │   ├── run-qemu.sh          # Run QEMU
-│   ├── run_eBPF_basic_design.sh  # Host-side eBPF helper
+│   ├── run_eBPF_basic_design.sh  # Host-side eBPF helper (basic design)
 │   └── test.sh              # eBPF validation tests
-├── eBPF_basic_design/       # eBPF concepts, examples, and commands
+├── eBPF_basic_design/       # Procedural C implementation with CO-RE & BTF
+│   ├── Makefile
+│   ├── README.md
+│   ├── vmlinux.h            # Generated kernel types for CO-RE
+│   ├── xdp_drop/            # XDP packet drop example
+│   ├── syscall_trace/       # Syscall tracing example
+│   ├── socket_filter/       # Socket filtering example
+│   ├── cgroup_egress/       # Cgroup egress filtering example
+│   ├── logging/             # Async event logging utilities
+│   └── build/               # Compiled eBPF objects and loaders
+├── eBPF_oop_design/         # Modern C++ OOP design with coroutines
+│   ├── CMakeLists.txt       # CMake build configuration
+│   ├── README.md
+│   ├── action/              # Action loop for async dispatch
+│   ├── coroutine/           # C++20 coroutine utilities
+│   ├── ebpf/                # Base eBPF program wrapper
+│   ├── log_action/          # Async logging action
+│   ├── xdp_drop/            # XDP program (OOP design)
+│   ├── syscall_trace/       # Syscall trace program (OOP design)
+│   ├── socket_filter/       # Socket filter program (OOP design)
+│   ├── cgroup_egress/       # Cgroup egress program (OOP design)
+│   └── build/               # Compiled artifacts
 ├── guest/
 │   └── init                 # Guest init; auto-attempts eBPF load
-└── build/                   # Generated artifacts
+└── build/                   # Generated kernel and rootfs artifacts
 ```
 
 ## System Requirements
@@ -127,6 +142,8 @@ If you need to change the version, I can help evaluate compatibility with the eB
 ## eBPF
 
 For a deeper explanation of what eBPF does, how the examples in this repo work, and how CO-RE/BTF are used here, see [eBPF_basic_design/README.md](eBPF_basic_design/README.md).
+
+For details on the C++ OOP architecture, async event handling, coroutines, and the action-based design pattern, see [eBPF_oop_design/README.md](eBPF_oop_design/README.md).
 
 ## Troubleshooting
 
