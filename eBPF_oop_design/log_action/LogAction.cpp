@@ -26,6 +26,12 @@ bool LogAction::ensure_log_directory(const std::string& path) noexcept
     return !ec;
 }
 
+// This is the critical async implementation of execute_async
+// It uses co_await to asynchronously acquire the file lock, then writes to the file, and finally releases the lock.
+// The ActionLoop will handle the scheduling and execution of this task, allowing it to run without blocking the main thread.
+//
+// However, std::ofstream would block the thread, so in a real implementation, you would want to use an asynchronous file I/O library or offload the file writing to a separate thread pool.
+// Otherwise, the file writing will block the ActionLoop thread, defeating the purpose of using coroutines for asynchrony.
 Task<void> LogAction::execute_async()
 {
     co_await LogAction::g_file_mgr.lock(path_);
