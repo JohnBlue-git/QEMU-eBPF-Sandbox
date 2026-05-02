@@ -31,6 +31,9 @@ FireForget ActionLoop::pushAction(std::unique_ptr<IAction> action) noexcept
 
 void ActionLoop::pump() noexcept
 {
+    // Vector to hold active tasks so they remain alive while suspended
+    std::vector<Task<void>> active_tasks;
+    // Main loop to process actions:
     while (true) {
         std::unique_ptr<IAction> action;
         {
@@ -43,12 +46,17 @@ void ActionLoop::pump() noexcept
             }
         }
         if (action) {
-            // Execute the action asynchronously
-            auto t = action->execute_async();
+            // Execute the action asynchronously:
+            //  action->execute_async()
+            // Push task to keep tasks alive while they are suspended:
+            //  active_tasks.push_back()
+            active_tasks.push_back(action->execute_async());
             // To be truly async, the task should handle its own continuation
             // or be resumed by a dedicated background executor.
-            t.resume();
+            active_tasks.back().resume();
             // Loop immediately continues to the next item in queue_
         }
+        // Cleanup finished tasks
+        std::erase_if(active_tasks, [](auto& t) { return t.ready(); });
     }
 }
