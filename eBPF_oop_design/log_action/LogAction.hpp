@@ -10,7 +10,7 @@ class LogAction final : public IAction {
 public:
     LogAction(std::string message, std::string path);
 
-    Task<void> execute_async() override;
+    FireForget execute_async() noexcept override;
 
     static bool ensure_log_directory(const std::string& path) noexcept;
 

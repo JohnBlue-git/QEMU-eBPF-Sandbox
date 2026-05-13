@@ -12,7 +12,7 @@
 class IAction {
 public:
     virtual ~IAction() = default;
-    virtual Task<void> execute_async() = 0;
+    virtual FireForget execute_async() noexcept = 0;
 };
 
 class ActionLoop {
@@ -23,13 +23,11 @@ public:
     static ActionLoop& getInstance() noexcept;
     ~ActionLoop() noexcept;
 
-    // Push a new action to the queue
-    FireForget pushAction(std::unique_ptr<IAction> action) noexcept;
+    void pushAction(std::unique_ptr<IAction> action) noexcept;
 
 private:
     ActionLoop() noexcept;
 
-    // 背景 event loop
     void pump() noexcept;
 
     std::mutex mutex_;
