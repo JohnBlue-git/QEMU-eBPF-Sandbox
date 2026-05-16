@@ -16,15 +16,10 @@ if [ -f "$ROOTFS_IMG" ] || [ -f "$ROOTFS_INITRD" ]; then
 fi
 
 echo "Building rootfs image ($ROOTFS_SIZE)..."
-
 if ! command -v cpio >/dev/null 2>&1; then
     echo "Error: cpio command not found. Run ./scripts/setup.sh first."
     exit 1
 fi
-
-echo "Building eBPF artifacts for guest image..."
-make -C eBPF_basic_design all
-make ebpf_oop
 
 # Prepare staging rootfs directory
 rm -rf "$ROOTFS_DIR"
@@ -62,17 +57,17 @@ for app in ifconfig ip udhcpc hostname; do
     install_applet "$app" "sbin"
 done
 
-# Package eBPF artifacts into rootfs
-
-# Package eBPF_basic_design artifacts
+# Package eBPF design artifacts
+echo "Building basic eBPF artifacts for guest image..."
+make -C eBPF_basic_design all
 mkdir -p "$ROOTFS_DIR/opt/ebpf_basic_design"
 cp eBPF_basic_design/build/*.bpf.o "$ROOTFS_DIR/opt/ebpf_basic_design/"
 cp eBPF_basic_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_basic_design/"
 
-# Package eBPF_oop_design artifacts
-mkdir -p "$ROOTFS_DIR/opt/ebpf_oop_design"
-cp eBPF_oop_design/build/*.bpf.o "$ROOTFS_DIR/opt/ebpf_oop_design/" 2>/dev/null || true
-cp eBPF_oop_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_oop_design/" 2>/dev/null || true
+# Package eBPF_oop_design artifacts via CMake install staging.
+# This works even when dependencies are built in non-standard paths.
+echo "Building oop eBPF artifacts for guest image..."
+DESTDIR="$ROOTFS_DIR" cmake --install eBPF_oop_design/build
 
 # Copy required shared libraries for user-space loaders
 copy_lib() {
@@ -82,17 +77,36 @@ copy_lib() {
     cp -L "$src" "$dst_dir/"
 }
 
+# Copy direct dependencies of loaders first, then recursively copy their dependencies.
+copy_loader_runtime_deps() {
+    local bin="$1"
+    ldd "$bin" | awk '/=> \/|^\// {for (i=1; i<=NF; ++i) if ($i ~ /^\//) {print $i; break}}' | while read -r dep; do
+        [ -f "$dep" ] && copy_lib "$dep"
+    done
+}
+
+# Also copy standard C library and its dependencies to ensure basic functionality in the guest, especially for dynamically linked loaders.
+copy_lib /lib/x86_64-linux-gnu/libc.so.6
+# The dynamic linker/loader is essential for running dynamically linked executables, so it must be included as well.
+copy_lib /lib64/ld-linux-x86-64.so.2
+# Some loaders may also depend on libm for math functions, so include it to avoid runtime errors.
+copy_lib /lib/x86_64-linux-gnu/libm.so.6
+
+# Copy core eBPF libraries that loaders depend on, which may not be in standard system paths.
+echo "Copying runtime dependencies for eBPF loaders..."
 copy_lib /lib/x86_64-linux-gnu/libbpf.so.1
 copy_lib /lib/x86_64-linux-gnu/libelf.so.1
 copy_lib /lib/x86_64-linux-gnu/libz.so.1
 copy_lib /lib/x86_64-linux-gnu/libzstd.so.1
-copy_lib /lib/x86_64-linux-gnu/libc.so.6
-copy_lib /lib64/ld-linux-x86-64.so.2
-copy_lib /usr/lib/x86_64-linux-gnu/libstdc++.so.6
-copy_lib /lib/x86_64-linux-gnu/libgcc_s.so.1
-copy_lib /lib/x86_64-linux-gnu/libm.so.6
+
+# Copy any extra runtime dependencies (e.g., Boost built outside /usr/lib) from actual loader link results.
+for loader in "$ROOTFS_DIR"/opt/ebpf_basic_design/*_loader "$ROOTFS_DIR"/opt/ebpf_oop_design/*_loader; do
+    [ -x "$loader" ] || continue
+    copy_loader_runtime_deps "$loader"
+done
 
 # Install guest init script
+echo "Setting up guest init script..."
 if [ -f guest/init ]; then
     cp guest/init "$ROOTFS_DIR/init"
 else
@@ -105,6 +119,7 @@ fi
 chmod +x "$ROOTFS_DIR/init"
 
 # Create minimal fstab
+echo "Creating minimal fstab..."
 cat > "$ROOTFS_DIR/etc/fstab" << 'FSTAB'
 proc    /proc   proc    defaults    0 0
 sysfs   /sys    sysfs   defaults    0 0
@@ -112,6 +127,7 @@ tmpfs   /tmp    tmpfs   defaults    0 0
 FSTAB
 
 # Create ext4 image from staging directory without loop-mount.
+echo "Creating ext4 image from staging directory..."
 mkdir -p build/images
 truncate -s "$ROOTFS_SIZE" "$ROOTFS_IMG"
 mkfs.ext4 -q -F -d "$ROOTFS_DIR" "$ROOTFS_IMG"

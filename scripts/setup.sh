@@ -35,6 +35,8 @@ sudo apt install -y \
     libssl-dev \
     libelf-dev \
     libz-dev \
+    libboost-dev \
+    libboost-system-dev \
     libcap-dev \
     openssh-client \
     qemu-system-x86 \
