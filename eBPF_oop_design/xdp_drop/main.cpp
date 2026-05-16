@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <vector>
 
-#include "../xdp_drop/xdp_drop.hpp"
+#include "xdp_drop.hpp"
 #include "../action/ActionLoop.hpp"
 #include "../log_action/LogAction.hpp"
 
