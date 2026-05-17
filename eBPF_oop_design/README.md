@@ -2,6 +2,8 @@
 
 This project implements an object-oriented (OOP) design for loading and managing eBPF programs in user space, focusing on modularity, reusability, and asynchronous event handling. It provides a C++ wrapper that separates concerns between eBPF object loading, program attachment, and event processing through an action-based architecture.
 
+> **Note**: This design uses custom C++20 coroutines for async execution. For a production-grade variant using **Boost.Asio** with superior performance and scalability, see [eBPF Boost.Asio Design](../eBPF_boost_asio_design/README.md).
+
 ## Why OOP Design?
 
 Using an OOP design offers several advantages for eBPF program management:
@@ -11,6 +13,28 @@ Using an OOP design offers several advantages for eBPF program management:
 - **Reusability**: Common components like action queues and logging can be reused across different eBPF programs without duplication.
 - **Asynchronous Processing**: Leverages coroutines for non-blocking event handling, improving performance and responsiveness in high-throughput scenarios.
 - **Type Safety**: Strong typing in C++ reduces runtime errors and enhances code reliability compared to procedural approaches.
+
+## Design Variants and Comparisons
+
+This repository offers **three complementary design approaches** for eBPF program management:
+
+| Aspect | Basic Design | OOP Design | Boost.Asio Design |
+|--------|--------------|-----------|-------------------|
+| **Language** | C + libbpf | C++ (custom coroutines) | C++ (Boost.Asio) |
+| **Complexity** | Low | Medium | High (production-grade) |
+| **Learning Curve** | Easy | Intermediate | Steep (but rewarding) |
+| **Use Cases** | Learning, simple apps | Prototyping, teaching | Production systems |
+| **Dependencies** | libbpf only | CMake, C++20 compiler | CMake, Boost, C++20 |
+| **Async Engine** | Synchronous | Custom task/FireForget | Boost.Asio io_context |
+| **Performance** | Fast | Good | Excellent |
+| **Scalability** | Limited | Good | Excellent (1000+ events) |
+
+**Choosing Your Design**:
+- **I'm learning eBPF**: Start with [Basic Design](../eBPF_basic_design/README.md)
+- **I want OOP + coroutines**: Use this OOP Design
+- **I need production performance**: Migrate to [Boost.Asio Design](../eBPF_boost_asio_design/README.md)
+
+The **OOP Design** serves as an excellent teaching vehicle and stepping stone, with code structure that translates directly to the Boost.Asio variant. Many companies start with the OOP design for prototyping, then switch to Boost.Asio when production demands arise.
 
 ## Project Structure
 

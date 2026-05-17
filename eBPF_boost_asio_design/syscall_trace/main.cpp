@@ -9,7 +9,7 @@
 
 #include <bpf/libbpf.h>
 
-#include "cgroup_egress.hpp"
+#include "../../eBPF_oop_design/syscall_trace/syscall_trace.hpp"
 #include "../log_action/LogAction.hpp"
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -41,22 +41,20 @@ static bool findObject(const std::vector<std::string>& candidates, std::string& 
 
 int main(int argc, char* argv[])
 {
-    const char *cgroup_path = argc > 1 ? argv[1] : "/sys/fs/cgroup";
-
     std::vector<std::string> object_candidates = {
-        "/opt/ebpf_oop_design/cgroup_egress.bpf.o",
-        "./cgroup_egress.bpf.o",
-        "build/cgroup_egress.bpf.o",
+        "/opt/ebpf_boost_asio_design/syscall_trace.bpf.o",
+        "./syscall_trace.bpf.o",
+        "build/syscall_trace.bpf.o",
     };
 
     std::vector<std::string> log_candidates = {
-        "/var/log/ebpf_oop_design/cgroup_egress.events.log",
-        "./cgroup_egress.events.log",
+        "/var/log/ebpf_boost_asio_design/syscall_trace.events.log",
+        "./syscall_trace.events.log",
     };
 
     std::string object_path;
     if (!findObject(object_candidates, object_path)) {
-        std::cerr << "Error: cgroup_egress.bpf.o not found\n";
+        std::cerr << "Error: syscall_trace.bpf.o not found\n";
         return 1;
     }
 
@@ -64,8 +62,6 @@ int main(int argc, char* argv[])
     if (!findObject(log_candidates, log_path)) {
         log_path = log_candidates.front();
     }
-
-    libbpf_set_print(libbpf_print_fn);
 
     // Ensure log directory exists
     if (!LogAction::ensure_log_directory(log_path)) {
@@ -76,13 +72,13 @@ int main(int argc, char* argv[])
     signal(SIGINT, handleSignal);
     signal(SIGTERM, handleSignal);
 
-    CgroupEgressProgram program(object_path, cgroup_path, log_path);
+    SyscallTraceProgram program(object_path, log_path);
     if (!program.loadFilter()) {
         std::cerr << "Error: failed to load filter\n";
         return 1;
     }
 
-    std::cout << "Cgroup egress program loaded using " << object_path << '\n';
+    std::cout << "Syscall trace program loaded using " << object_path << '\n';
     std::cout << "Writing events asynchronously to " << log_path << '\n';
     std::cout << "Press Ctrl+C to exit.\n";
 

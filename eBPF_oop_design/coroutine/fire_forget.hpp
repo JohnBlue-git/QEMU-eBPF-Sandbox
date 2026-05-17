@@ -1,7 +1,7 @@
 #pragma once
 
 #include <coroutine>
-#include <iostream>
+#include <exception>
 
 struct FireForget {
     struct promise_type {

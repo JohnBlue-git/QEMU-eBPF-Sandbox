@@ -9,7 +9,7 @@
 
 #include <bpf/libbpf.h>
 
-#include "cgroup_egress.hpp"
+#include "../../eBPF_oop_design/cgroup_egress/cgroup_egress.hpp"
 #include "../log_action/LogAction.hpp"
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
@@ -44,13 +44,13 @@ int main(int argc, char* argv[])
     const char *cgroup_path = argc > 1 ? argv[1] : "/sys/fs/cgroup";
 
     std::vector<std::string> object_candidates = {
-        "/opt/ebpf_oop_design/cgroup_egress.bpf.o",
+        "/opt/ebpf_boost_asio_design/cgroup_egress.bpf.o",
         "./cgroup_egress.bpf.o",
         "build/cgroup_egress.bpf.o",
     };
 
     std::vector<std::string> log_candidates = {
-        "/var/log/ebpf_oop_design/cgroup_egress.events.log",
+        "/var/log/ebpf_boost_asio_design/cgroup_egress.events.log",
         "./cgroup_egress.events.log",
     };
 

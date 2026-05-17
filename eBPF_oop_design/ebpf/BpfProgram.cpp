@@ -1,5 +1,6 @@
 #include <bpf/libbpf.h>
-#include <cstdio>
+#include <iostream>
+#include <utility>
 
 #include "BpfProgram.hpp"
 
@@ -130,13 +131,13 @@ bool BpfProgram::registerEventHandler() noexcept
 {
     int map_fd = getMapFd("events");
     if (map_fd < 0) {
-        std::fprintf(stderr, "Error: failed to find events map\n");
+        std::cerr << "Error: failed to find events map\n";
         return false;
     }
 
     ring_buffer_ = ring_buffer__new(map_fd, this->getRingBufferHandler(), this, nullptr);
     if (!ring_buffer_) {
-        std::fprintf(stderr, "Error: failed to create ring buffer\n");
+        std::cerr << "Error: failed to create ring buffer\n";
         return false;
     }
     return true;

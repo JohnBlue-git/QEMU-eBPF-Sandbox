@@ -2,7 +2,7 @@
 
 #include <string>
 
-#include "BpfProgram.hpp"
+#include "../ebpf/BpfProgram.hpp"
 
 class XdpDropProgram final : public BpfProgram {
 public:

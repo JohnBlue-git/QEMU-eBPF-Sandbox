@@ -1,9 +1,11 @@
 #include <arpa/inet.h>
+#include <bpf/libbpf.h>
 #include <linux/if_link.h>
 #include <net/if.h>
-#include <unistd.h>
 #include <cstdio>
-#include <cstring>
+#include <iostream>
+#include <memory>
+#include <utility>
 
 #include "xdp_drop.hpp"
 #include "../action/ActionLoop.hpp"
@@ -62,18 +64,18 @@ XdpDropProgram::~XdpDropProgram() noexcept
 bool XdpDropProgram::attachProgram() noexcept
 {
     if (!this->ifindex_) {
-        std::fprintf(stderr, "Error: interface '%s' not found\n", this->interface_.c_str());
+        std::cerr << "Error: interface '" << this->interface_ << "' not found\n";
         return false;
     }
 
     int prog_fd = getProgramFd("xdp_pass");
     if (prog_fd < 0) {
-        std::fprintf(stderr, "Error: xdp program not found\n");
+        std::cerr << "Error: xdp program not found\n";
         return false;
     }
 
     if (bpf_xdp_attach(this->ifindex_, prog_fd, XDP_FLAGS_UPDATE_IF_NOEXIST, nullptr) < 0) {
-        std::fprintf(stderr, "Error: failed to attach XDP program\n");
+        std::cerr << "Error: failed to attach XDP program\n";
         return false;
     }
     attached_ = true;

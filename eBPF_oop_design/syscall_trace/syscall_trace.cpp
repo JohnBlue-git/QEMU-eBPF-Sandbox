@@ -1,7 +1,9 @@
 #include <bpf/libbpf.h>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
 #include <memory>
+#include <utility>
 
 #include "syscall_trace.hpp"
 #include "../action/ActionLoop.hpp"
@@ -125,8 +127,8 @@ auto SyscallTraceProgram::getRingBufferHandler() -> int(*)(void*, void*, size_t)
 }
 
 int SyscallTraceProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz) {
-	if (data_sz < sizeof(syscall_trace_event))
-		return 0;
+    if (data_sz < sizeof(syscall_trace_event))
+	    return 0;
 
 	auto self = static_cast<SyscallTraceProgram*>(ctx);
 	auto event = static_cast<const syscall_trace_event*>(data);
@@ -139,7 +141,10 @@ int SyscallTraceProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz
 				 event->tid,
 				 (unsigned long long)event->count);
 
-	auto action = std::make_unique<LogAction>(std::string(line), self->log_path_);
+	auto action = std::make_unique<LogAction>(
+		std::string(line),
+		self->log_path_
+	);
 	ActionLoop::getInstance().pushAction(std::move(action));
 
 	return 0;

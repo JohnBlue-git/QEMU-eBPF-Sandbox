@@ -14,6 +14,8 @@ mknod /dev/tty c 5 0 2>/dev/null || true
 hostname ebpf-vm
 ifconfig lo 127.0.0.1 up 2>/dev/null || true
 
+
+
 # Pick a usable network interface for traffic generation and eBPF attach.
 # Prefer real device-backed interfaces and skip virtual tunnel pseudo-devices.
 is_usable_iface() {
@@ -89,7 +91,6 @@ if false; then
     fi
 
     echo "[guest-init] ready. Logs: /var/log/ebpf_basic_design/syscall_trace_loader.log /var/log/ebpf_basic_design/xdp_loader.log /var/log/ebpf_basic_design/socket_filter.log /var/log/ebpf_basic_design/cgroup_egress.log"
-    exec /bin/sh
 fi
 
 if true; then
@@ -130,5 +131,46 @@ if true; then
     fi
 
     echo "[guest-init] ready. Logs: /var/log/ebpf_oop_design/syscall_trace_loader.log /var/log/ebpf_oop_design/xdp_loader.log /var/log/ebpf_oop_design/socket_filter.log /var/log/ebpf_oop_design/cgroup_egress.log"
-    exec /bin/sh
 fi
+
+if true; then
+    echo "[guest-init] eBPF artifacts under /opt/ebpf_boost_asio_design"
+    mkdir -p /var/log/ebpf_boost_asio_design
+    ls -l /opt/ebpf_boost_asio_design 2>/dev/null || true
+
+    if [ -x /opt/ebpf_boost_asio_design/syscall_trace_loader ]; then
+        echo "[guest-init] starting syscall trace loader"
+        /opt/ebpf_boost_asio_design/syscall_trace_loader >/var/log/ebpf_boost_asio_design/syscall_trace_loader.log 2>&1 &
+    fi
+
+    if [ -x /opt/ebpf_boost_asio_design/xdp_drop_loader ] && [ -n "$IFACE" ]; then
+        echo "[guest-init] starting XDP loader on $IFACE"
+        /opt/ebpf_boost_asio_design/xdp_drop_loader "$IFACE" >/var/log/ebpf_boost_asio_design/xdp_loader.log 2>&1 &
+    fi
+
+    if [ -x /opt/ebpf_boost_asio_design/socket_filter_loader ]; then
+        if [ -n "$IFACE" ]; then
+            echo "[guest-init] starting socket filter loader on $IFACE"
+            /opt/ebpf_boost_asio_design/socket_filter_loader "$IFACE" >/var/log/ebpf_boost_asio_design/socket_filter.log 2>&1 &
+        else
+            echo "[guest-init] skip socket filter loader: no non-loopback interface"
+        fi
+    else
+        echo "[guest-init] socket_filter_loader not found, skipping"
+    fi
+
+    if [ -x /opt/ebpf_boost_asio_design/cgroup_egress_loader ]; then
+        if [ -d /cgroup2 ]; then
+            echo "[guest-init] starting cgroup egress loader on /cgroup2"
+            /opt/ebpf_boost_asio_design/cgroup_egress_loader /cgroup2 >/var/log/ebpf_boost_asio_design/cgroup_egress.log 2>&1 &
+        else
+            echo "[guest-init] skip cgroup egress loader: /cgroup2 missing"
+        fi
+    else
+        echo "[guest-init] cgroup_egress_loader not found, skipping"
+    fi
+
+    echo "[guest-init] ready. Logs: /var/log/ebpf_boost_asio_design/syscall_trace_loader.log /var/log/ebpf_boost_asio_design/xdp_loader.log /var/log/ebpf_boost_asio_design/socket_filter.log /var/log/ebpf_boost_asio_design/cgroup_egress.log"
+fi
+
+exec /bin/sh

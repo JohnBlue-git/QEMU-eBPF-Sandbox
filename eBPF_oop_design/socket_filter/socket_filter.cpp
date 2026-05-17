@@ -1,12 +1,16 @@
 #include <bpf/libbpf.h>
+#include <cerrno>
 #include <cstdio>
 #include <cstring>
+#include <iostream>
 #include <memory>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <linux/if_packet.h>
+#include <utility>
 #include <linux/if_ether.h>
+#include <linux/if_packet.h>
 #include <net/if.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #include "socket_filter.hpp"
 #include "../action/ActionLoop.hpp"
@@ -64,20 +68,20 @@ SocketFilterProgram::~SocketFilterProgram() noexcept
 bool SocketFilterProgram::attachProgram() noexcept {
     int prog_fd = getProgramFd("filter_tcp_only");
     if (prog_fd < 0) {
-        std::fprintf(stderr, "Error: filter_tcp_only program not found\n");
+        std::cerr << "Error: filter_tcp_only program not found\n";
         return false;
     }
 
     sock_fd_ = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (sock_fd_ < 0) {
-        std::fprintf(stderr, "Error: failed to create raw socket: %s\n", strerror(errno));
+        std::cerr << "Error: failed to create raw socket: " << strerror(errno) << '\n';
         sock_fd_ = -1;
         return false;
     }
 
     int ifindex = if_nametoindex(interface_.c_str());
     if (!ifindex) {
-        std::fprintf(stderr, "Error: interface '%s' not found\n", interface_.c_str());
+        std::cerr << "Error: interface '" << interface_ << "' not found\n";
         return false;
     }
 
@@ -86,12 +90,12 @@ bool SocketFilterProgram::attachProgram() noexcept {
     sll.sll_ifindex = ifindex;
     sll.sll_protocol = htons(ETH_P_ALL);
     if (bind(sock_fd_, (struct sockaddr *)&sll, sizeof(sll)) < 0) {
-        std::fprintf(stderr, "Error: failed to bind socket: %s\n", strerror(errno));
+        std::cerr << "Error: failed to bind socket: " << strerror(errno) << '\n';
         return false;
     }
 
     if (setsockopt(sock_fd_, SOL_SOCKET, SO_ATTACH_BPF, &prog_fd, sizeof(prog_fd)) < 0) {
-        std::fprintf(stderr, "Error: failed to attach socket filter: %s\n", strerror(errno));
+        std::cerr << "Error: failed to attach socket filter: " << strerror(errno) << '\n';
         return false;
     }
     return true;
@@ -126,7 +130,10 @@ int SocketFilterProgram::ringBufferHandler(void* ctx, void* data, size_t data_sz
                  event->ip_proto,
                  event->action ? "PASS" : "DROP");
 
-    auto action = std::make_unique<LogAction>(std::string(line), self->log_path_);
+    auto action = std::make_unique<LogAction>(
+        std::string(line),
+        self->log_path_
+    );
     ActionLoop::getInstance().pushAction(std::move(action));
 
     return 0;

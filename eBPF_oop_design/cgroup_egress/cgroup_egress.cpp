@@ -1,7 +1,8 @@
 #include <bpf/libbpf.h>
 #include <cstdio>
-#include <cstring>
+#include <iostream>
 #include <memory>
+#include <utility>
 #include <fcntl.h>
 #include <unistd.h>
 
@@ -59,19 +60,19 @@ bool CgroupEgressProgram::attachProgram() noexcept
 {
     struct bpf_program *prog = bpf_object__find_program_by_name(object_, "deny_icmp_egress");
     if (!prog) {
-        std::fprintf(stderr, "Error: deny_icmp_egress program not found in object\n");
+        std::cerr << "Error: deny_icmp_egress program not found in object\n";
         return false;
     }
 
     cgroup_fd_ = open(this->cgroup_path_.c_str(), O_RDONLY | O_DIRECTORY);
     if (cgroup_fd_ < 0) {
-        std::fprintf(stderr, "Error: failed to open cgroup path\n");
+        std::cerr << "Error: failed to open cgroup path\n";
         return false;
     }
 
     link_ = bpf_program__attach_cgroup(prog, cgroup_fd_);
     if (libbpf_get_error(link_)) {
-        std::fprintf(stderr, "Error: failed to attach cgroup egress program\n");
+        std::cerr << "Error: failed to attach cgroup egress program\n";
         link_ = nullptr;
         return false;
     }
@@ -112,7 +113,10 @@ int CgroupEgressProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz
                  event->ip_proto,
                  event->action ? "ALLOW" : "DENY");
 
-    auto action = std::make_unique<LogAction>(std::string(line), self->log_path_);
+    auto action = std::make_unique<LogAction>(
+        std::string(line),
+        self->log_path_
+    );
     ActionLoop::getInstance().pushAction(std::move(action));
 
     return 0;

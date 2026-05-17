@@ -22,18 +22,6 @@ find_package(Threads REQUIRED)
 
 set(EOPPD_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(EOPPD_BUILD_DIR ${CMAKE_BINARY_DIR})
-set(EOPPD_BPF_SOURCES
-    ${EOPPD_SOURCE_DIR}/xdp_drop/xdp_drop.bpf.c
-    ${EOPPD_SOURCE_DIR}/syscall_trace/syscall_trace.bpf.c
-    ${EOPPD_SOURCE_DIR}/socket_filter/socket_filter.bpf.c
-    ${EOPPD_SOURCE_DIR}/cgroup_egress/cgroup_egress.bpf.c
-)
-set(EOPPD_BPF_OBJECTS
-    xdp_drop.bpf.o
-    syscall_trace.bpf.o
-    socket_filter.bpf.o
-    cgroup_egress.bpf.o
-)
 set(EOPPD_VMLINUX_HEADER vmlinux.h)
 set(EOPPD_VMLINUX_BTF /sys/kernel/btf/vmlinux)
 
@@ -67,10 +55,15 @@ add_custom_target(all_bpf_objects DEPENDS ${BPF_OBJECTS})
 
 include_directories(
     ${EOPPD_SOURCE_DIR}/coroutine
-    ${EOPPD_SOURCE_DIR}/ebpf
-    ${EOPPD_SOURCE_DIR}/xdp_drop
     ${EOPPD_SOURCE_DIR}/action
     ${EOPPD_SOURCE_DIR}/log_action
+
+    ${EOPPD_SOURCE_DIR}/ebpf
+    ${EOPPD_SOURCE_DIR}/xdp_drop
+    ${EOPPD_SOURCE_DIR}/cgroup_egress
+    ${EOPPD_SOURCE_DIR}/socket_filter
+    ${EOPPD_SOURCE_DIR}/syscall_trace
+
     ${LIBBPF_INCLUDE_DIR}
     ${EOPPD_BUILD_DIR}
 )

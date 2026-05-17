@@ -1,19 +1,22 @@
 #include <csignal>
+#include <cerrno>
+#include <cstdarg>
 #include <cstdio>
-#include <cstring>
+#include <iostream>
 #include <string>
 #include <unistd.h>
 #include <vector>
 
+#include <bpf/libbpf.h>
+
 #include "socket_filter.hpp"
-#include "../action/ActionLoop.hpp"
 #include "../log_action/LogAction.hpp"
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {
     if (level == LIBBPF_DEBUG)
         return 0;
-    std::fprintf(stderr, "libbpf: ");
+    std::cerr << "libbpf: ";
     return std::vfprintf(stderr, format, args);
 }
 
@@ -53,7 +56,7 @@ int main(int argc, char* argv[])
 
     std::string object_path;
     if (!findObject(object_candidates, object_path)) {
-        std::fprintf(stderr, "Error: socket_filter.bpf.o not found\n");
+        std::cerr << "Error: socket_filter.bpf.o not found\n";
         return 1;
     }
 
@@ -64,7 +67,7 @@ int main(int argc, char* argv[])
 
     // Ensure log directory exists
     if (!LogAction::ensure_log_directory(log_path)) {
-        std::fprintf(stderr, "Error: failed to create log directory for %s\n", log_path.c_str());
+        std::cerr << "Error: failed to create log directory for " << log_path << '\n';
         return 1;
     }
 
@@ -75,18 +78,18 @@ int main(int argc, char* argv[])
 
     SocketFilterProgram program(object_path, interface, log_path_full);
     if (!program.loadFilter()) {
-        std::fprintf(stderr, "Error: failed to load filter\n");
+        std::cerr << "Error: failed to load filter\n";
         return 1;
     }
 
-    std::printf("Socket filter program loaded using %s\n", object_path.c_str());
-    std::printf("Writing events asynchronously to %s\n", log_path.c_str());
-    std::printf("Press Ctrl+C to exit.\n");
+    std::cout << "Socket filter program loaded using " << object_path << '\n';
+    std::cout << "Writing events asynchronously to " << log_path << '\n';
+    std::cout << "Press Ctrl+C to exit.\n";
 
     while (!exiting) {
         int poll_ret = program.pollEvents(200);
         if (poll_ret < 0 && poll_ret != -EINTR) {
-            std::fprintf(stderr, "Error: ring buffer poll failed: %d\n", poll_ret);
+            std::cerr << "Error: ring buffer poll failed: " << poll_ret << '\n';
             break;
         }
     }

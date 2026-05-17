@@ -16,6 +16,7 @@ help:
 	@echo "  make rootfs       - Build rootfs image only"
 	@echo "  make ebpf_basic   - Build eBPF programs only"
 	@echo "  make ebpf_oop     - Build eBPF OOP design example only"
+	@echo "  make ebpf_boost_asio - Build eBPF Boost.Asio example only"
 	@echo ""
 	@echo "Run QEMU:"
 	@echo "  make qemu         - Run QEMU with KVM (default)"
@@ -26,6 +27,7 @@ help:
 	@echo "  make test         - Run eBPF tests"
 	@echo "  make clean_ebpf_basic - Remove eBPF example build artifacts only"
 	@echo "  make clean_ebpf_oop - Remove eBPF OOP design build artifacts only"
+	@echo "  make clean_ebpf_boost_asio - Remove eBPF Boost.Asio example build artifacts only"
 	@echo "  make clean_rootfs - Remove rootfs staging/image artifacts only"
 	@echo "  make clean        - Remove build artifacts"
 	@echo "  make distclean    - Remove everything (including images)"
@@ -35,7 +37,7 @@ setup:
 	@echo "Installing dependencies..."
 	@bash scripts/setup.sh
 
-build: kernel ebpf_basic ebpf_oop rootfs
+build: kernel ebpf_basic ebpf_oop ebpf_boost_asio rootfs
 	@echo "✓ Build complete!"
 
 kernel:
@@ -50,6 +52,11 @@ ebpf_oop:
 	@echo "Building eBPF OOP design example..."
 	cmake -S eBPF_oop_design -B eBPF_oop_design/build
 	cmake --build eBPF_oop_design/build
+
+ebpf_boost_asio:
+	@echo "Building eBPF Boost.Asio example..."
+	cmake -S eBPF_boost_asio_design -B eBPF_boost_asio_design/build
+	cmake --build eBPF_boost_asio_design/build
 
 rootfs:
 	@echo "Building rootfs..."
@@ -71,7 +78,8 @@ clean:
 	@echo "Cleaning build artifacts..."
 	@rm -rf build/
 	@$(MAKE) -C eBPF_basic_design clean
-	@$(MAKE) -C eBPF_oop_design clean
+	rm -rf eBPF_oop_design/build
+	rm -rf eBPF_boost_asio_design/build
 	@echo "✓ Clean complete"
 
 clean_ebpf_basic:
@@ -83,6 +91,11 @@ clean_ebpf_oop:
 	@echo "Cleaning eBPF OOP artifacts..."
 	rm -rf eBPF_oop_design/build
 	@echo "✓ eBPF OOP clean complete"
+
+clean_ebpf_boost_asio:
+	@echo "Cleaning eBPF Boost.Asio artifacts..."
+	rm -rf eBPF_boost_asio_design/build
+	@echo "✓ eBPF Boost.Asio clean complete"
 
 clean_rootfs:
 	@echo "Cleaning rootfs artifacts..."

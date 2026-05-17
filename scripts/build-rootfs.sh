@@ -10,6 +10,20 @@ ROOTFS_DIR="build/rootfs"
 ROOTFS_IMG="build/images/rootfs.ext4"
 ROOTFS_INITRD="build/images/rootfs.cpio.gz"
 
+copy_lib() {
+    local src="$1"
+    local dst_dir="$ROOTFS_DIR$(dirname "$src")"
+    mkdir -p "$dst_dir"
+    cp -L "$src" "$dst_dir/"
+}
+
+copy_binary_runtime_deps() {
+    local bin="$1"
+    ldd "$bin" | awk '/=> \/|^\// {for (i=1; i<=NF; ++i) if ($i ~ /^\//) {print $i; break}}' | while read -r dep; do
+        [ -f "$dep" ] && copy_lib "$dep"
+    done
+}
+
 if [ -f "$ROOTFS_IMG" ] || [ -f "$ROOTFS_INITRD" ]; then
     echo "Refreshing existing rootfs artifacts..."
     rm -f "$ROOTFS_IMG" "$ROOTFS_INITRD"
@@ -59,7 +73,7 @@ done
 
 # Package eBPF design artifacts
 echo "Building basic eBPF artifacts for guest image..."
-make -C eBPF_basic_design all
+#make -C eBPF_basic_design all
 mkdir -p "$ROOTFS_DIR/opt/ebpf_basic_design"
 cp eBPF_basic_design/build/*.bpf.o "$ROOTFS_DIR/opt/ebpf_basic_design/"
 cp eBPF_basic_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_basic_design/"
@@ -69,21 +83,10 @@ cp eBPF_basic_design/build/*_loader "$ROOTFS_DIR/opt/ebpf_basic_design/"
 echo "Building oop eBPF artifacts for guest image..."
 DESTDIR="$ROOTFS_DIR" cmake --install eBPF_oop_design/build
 
-# Copy required shared libraries for user-space loaders
-copy_lib() {
-    local src="$1"
-    local dst_dir="$ROOTFS_DIR$(dirname "$src")"
-    mkdir -p "$dst_dir"
-    cp -L "$src" "$dst_dir/"
-}
-
-# Copy direct dependencies of loaders first, then recursively copy their dependencies.
-copy_loader_runtime_deps() {
-    local bin="$1"
-    ldd "$bin" | awk '/=> \/|^\// {for (i=1; i<=NF; ++i) if ($i ~ /^\//) {print $i; break}}' | while read -r dep; do
-        [ -f "$dep" ] && copy_lib "$dep"
-    done
-}
+# Package eBPF_boost_asio_design artifacts via CMake install staging.
+# This works even when dependencies are built in non-standard paths.
+echo "Building Boost.Asio eBPF artifacts for guest image..."
+DESTDIR="$ROOTFS_DIR" cmake --install eBPF_boost_asio_design/build
 
 # Also copy standard C library and its dependencies to ensure basic functionality in the guest, especially for dynamically linked loaders.
 copy_lib /lib/x86_64-linux-gnu/libc.so.6
@@ -100,7 +103,14 @@ copy_lib /lib/x86_64-linux-gnu/libz.so.1
 copy_lib /lib/x86_64-linux-gnu/libzstd.so.1
 
 # Copy any extra runtime dependencies (e.g., Boost built outside /usr/lib) from actual loader link results.
-for loader in "$ROOTFS_DIR"/opt/ebpf_basic_design/*_loader "$ROOTFS_DIR"/opt/ebpf_oop_design/*_loader; do
+copy_loader_runtime_deps() {
+    copy_binary_runtime_deps "$1"
+}
+
+for loader in \
+    "$ROOTFS_DIR"/opt/ebpf_basic_design/*_loader \
+    "$ROOTFS_DIR"/opt/ebpf_oop_design/*_loader \
+    "$ROOTFS_DIR"/opt/ebpf_boost_asio_design/*_loader; do
     [ -x "$loader" ] || continue
     copy_loader_runtime_deps "$loader"
 done
