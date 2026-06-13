@@ -98,6 +98,11 @@ if true; then
     mkdir -p /var/log/ebpf_oop_design
     ls -l /opt/ebpf_oop_design 2>/dev/null || true
 
+    if [ -x /opt/ebpf_oop_design/action_runner ]; then
+        echo "[guest-init] starting action_runner (oop)"
+        /opt/ebpf_oop_design/action_runner >/var/log/ebpf_oop_design/action_runner.log 2>&1 &
+    fi
+
     if [ -x /opt/ebpf_oop_design/syscall_trace_loader ]; then
         echo "[guest-init] starting syscall trace loader"
         /opt/ebpf_oop_design/syscall_trace_loader >/var/log/ebpf_oop_design/syscall_trace_loader.log 2>&1 &
@@ -137,6 +142,11 @@ if true; then
     echo "[guest-init] eBPF artifacts under /opt/ebpf_boost_asio_design"
     mkdir -p /var/log/ebpf_boost_asio_design
     ls -l /opt/ebpf_boost_asio_design 2>/dev/null || true
+
+    if [ -x /opt/ebpf_boost_asio_design/action_runner ]; then
+        echo "[guest-init] starting action_runner (boost_asio)"
+        /opt/ebpf_boost_asio_design/action_runner >/var/log/ebpf_boost_asio_design/action_runner.log 2>&1 &
+    fi
 
     if [ -x /opt/ebpf_boost_asio_design/syscall_trace_loader ]; then
         echo "[guest-init] starting syscall trace loader"

@@ -112,3 +112,11 @@ foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
 endforeach()
 
 message(STATUS "ebpf_boost_asio_design configured")
+
+# Add a small runner that forces ActionLoop to initialize and start its thread immediately
+add_executable(action_runner
+    ${EOPPD_SOURCE_DIR}/action/main.cpp
+    ${EOPPD_SOURCE_DIR}/action/ActionLoop.cpp
+)
+target_link_libraries(action_runner PRIVATE Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
+install(TARGETS action_runner DESTINATION /opt/ebpf_boost_asio_design)
