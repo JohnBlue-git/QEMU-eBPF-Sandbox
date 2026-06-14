@@ -39,16 +39,15 @@ The **OOP Design** serves as an excellent teaching vehicle and stepping stone, w
 ## Project Structure
 
 - `CMakeLists.txt` — Build configuration for the project.
-- `action/` — Core action loop implementation for asynchronous event processing.
+- `actions/` — Core action loop and logging action implementation for asynchronous event processing.
   - `ActionLoop.hpp/cpp` — Singleton action dispatcher with thread-safe queue.
+  - `LogAction.hpp/cpp` — Asynchronous logging action using coroutines.
 - `coroutine/` — Custom coroutine utilities for async operations.
   - `task.hpp` — Task class for coroutine-based asynchronous tasks.
   - `fire_forget.hpp` — Fire-and-forget coroutine wrapper.
   - `async_mutex.hpp` — Asynchronous mutex for thread-safe file operations.
 - `ebpf/` — Base eBPF program wrapper.
   - `BpfProgram.hpp/cpp` — Abstract base class for eBPF program management.
-- `log_action/` — Logging action implementation.
-  - `LogAction.hpp/cpp` — Asynchronous logging action using coroutines.
 - `xdp_drop/`, `socket_filter/`, `cgroup_egress/`, `syscall_trace/` — Specific eBPF program implementations, each containing:
   - `main.cpp` — Entry point for the loader.
   - `[program].bpf.c` — eBPF kernel program source.

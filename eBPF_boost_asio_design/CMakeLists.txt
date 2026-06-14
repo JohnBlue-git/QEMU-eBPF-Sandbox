@@ -79,8 +79,7 @@ add_custom_target(all_bpf_objects DEPENDS ${BPF_OBJECTS})
 
 include_directories(
     ${EOPPD_SOURCE_DIR}/coroutine
-    ${EOPPD_SOURCE_DIR}/action
-    ${EOPPD_SOURCE_DIR}/log_action
+    ${EOPPD_SOURCE_DIR}/actions
 
     ${EOPPD_EBPF_SOURCE_DIR}/ebpf
     ${EOPPD_EBPF_SOURCE_DIR}/xdp_drop
@@ -100,8 +99,8 @@ foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
         ${EOPPD_EBPF_SOURCE_DIR}/ebpf/BpfProgram.cpp
         ${EOPPD_EBPF_SOURCE_DIR}/${example}/${example}.cpp
         ${EOPPD_SOURCE_DIR}/${example}/main.cpp
-        ${EOPPD_SOURCE_DIR}/action/ActionLoop.cpp
-        ${EOPPD_SOURCE_DIR}/log_action/LogAction.cpp
+        ${EOPPD_SOURCE_DIR}/actions/ActionLoop.cpp
+        ${EOPPD_SOURCE_DIR}/actions/LogAction.cpp
     )
     target_compile_definitions(${example}_loader PRIVATE BOOST_ERROR_CODE_HEADER_ONLY)
     target_link_libraries(${example}_loader PRIVATE ${LIBBPF_LIBRARY} ${LIBELF_LIBRARY} ${LIBZ_LIBRARY} Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
@@ -115,8 +114,8 @@ message(STATUS "ebpf_boost_asio_design configured")
 
 # Add a small runner that forces ActionLoop to initialize and start its thread immediately
 add_executable(action_runner
-    ${EOPPD_SOURCE_DIR}/action/main.cpp
-    ${EOPPD_SOURCE_DIR}/action/ActionLoop.cpp
+    ${EOPPD_SOURCE_DIR}/actions/main.cpp
+    ${EOPPD_SOURCE_DIR}/actions/ActionLoop.cpp
 )
 target_link_libraries(action_runner PRIVATE Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
 install(TARGETS action_runner DESTINATION /opt/ebpf_boost_asio_design)

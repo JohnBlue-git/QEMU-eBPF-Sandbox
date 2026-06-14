@@ -10,7 +10,7 @@
 #include <bpf/libbpf.h>
 
 #include "../../eBPF_oop_design/syscall_trace/syscall_trace.hpp"
-#include "../log_action/LogAction.hpp"
+#include "../actions/LogAction.hpp"
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
 {

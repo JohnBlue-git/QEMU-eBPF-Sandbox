@@ -33,12 +33,11 @@ Both designs share the same OOP principles and event-driven architecture, but di
 ## Project Structure
 
 - `CMakeLists.txt` — Build configuration for Boost.Asio and eBPF tooling.
-- `action/` — Boost.Asio-based action loop implementation.
+- `actions/` — Boost.Asio-based action loop and logging action implementation.
   - `ActionLoop.hpp/cpp` — Singleton dispatcher using io_context and executor work guards.
+  - `LogAction.hpp/cpp` — Async logging writer using Boost.Asio.
 - `coroutine/` — Boost.Asio async utilities.
   - `async_mutex.hpp` — AsyncFileStreamManager for concurrent file access with stream caching.
-- `log_action/` — Asynchronous logging using Boost.Asio.
-  - `LogAction.hpp/cpp` — Async file writer using boost::asio::async_write and awaitables.
 - `xdp_drop/`, `socket_filter/`, `cgroup_egress/`, `syscall_trace/` — Specific eBPF program implementations, each containing:
   - `main.cpp` — Entry point for the loader.
   - References eBPF kernel programs and wrappers from `../eBPF_oop_design/`.
@@ -289,7 +288,7 @@ To create a custom action using Boost.Asio awaitables:
 
 To modify the io_context thread model:
 
-1. Edit `action/ActionLoop.cpp`
+1. Edit `actions/ActionLoop.cpp`
 2. Add multiple threads to `io_context.run()`:
    ```cpp
    threads_.emplace_back([&] { io_context_.run(); });  // Repeat for multiple threads

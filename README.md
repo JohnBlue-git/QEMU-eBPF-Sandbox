@@ -124,10 +124,9 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 ├── eBPF_oop_design/         # Modern C++ OOP design with coroutines
 │   ├── CMakeLists.txt       # CMake build configuration
 │   ├── README.md
-│   ├── action/              # Action loop for async dispatch
+│   ├── actions/             # Action loop and async logging implementation
 │   ├── coroutine/           # C++20 coroutine utilities
 │   ├── ebpf/                # Base eBPF program wrapper
-│   ├── log_action/          # Async logging action
 │   ├── xdp_drop/            # XDP program (OOP design)
 │   ├── syscall_trace/       # Syscall trace program (OOP design)
 │   ├── socket_filter/       # Socket filter program (OOP design)
@@ -136,9 +135,8 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 ├── eBPF_boost_asio_design/  # Production C++ with Boost.Asio async I/O
 │   ├── CMakeLists.txt       # CMake build configuration with external dependencies
 │   ├── README.md
-│   ├── action/              # Boost.Asio-based action loop dispatcher
+│   ├── actions/             # Boost.Asio action loop and async logging implementation
 │   ├── coroutine/           # Boost.Asio async utilities (stream caching, file locking)
-│   ├── log_action/          # Async logging with boost::asio::async_write
 │   ├── xdp_drop/            # XDP program (Boost.Asio design)
 │   ├── syscall_trace/       # Syscall trace program (Boost.Asio design)
 │   ├── socket_filter/       # Socket filter program (Boost.Asio design)

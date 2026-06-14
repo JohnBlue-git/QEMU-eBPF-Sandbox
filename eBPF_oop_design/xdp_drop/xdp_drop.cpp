@@ -8,8 +8,8 @@
 #include <utility>
 
 #include "xdp_drop.hpp"
-#include "../action/ActionLoop.hpp"
-#include "../log_action/LogAction.hpp"
+#include "../actions/ActionLoop.hpp"
+#include "../actions/LogAction.hpp"
 
 struct xdp_drop_event {
     __u64 ts_ns;

@@ -6,8 +6,8 @@
 #include <utility>
 
 #include "syscall_trace.hpp"
-#include "../action/ActionLoop.hpp"
-#include "../log_action/LogAction.hpp"
+#include "../actions/ActionLoop.hpp"
+#include "../actions/LogAction.hpp"
 
 struct syscall_trace_event {
 	__u64 ts_ns;

@@ -55,8 +55,7 @@ add_custom_target(all_bpf_objects DEPENDS ${BPF_OBJECTS})
 
 include_directories(
     ${EOPPD_SOURCE_DIR}/coroutine
-    ${EOPPD_SOURCE_DIR}/action
-    ${EOPPD_SOURCE_DIR}/log_action
+    ${EOPPD_SOURCE_DIR}/actions
 
     ${EOPPD_SOURCE_DIR}/ebpf
     ${EOPPD_SOURCE_DIR}/xdp_drop
@@ -75,8 +74,8 @@ foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
         ${example}/main.cpp
         ${example}/${example}.cpp
         ebpf/BpfProgram.cpp
-        action/ActionLoop.cpp
-        log_action/LogAction.cpp
+        actions/ActionLoop.cpp
+        actions/LogAction.cpp
     )
     target_link_libraries(${example}_loader PRIVATE ${LIBBPF_LIBRARY} ${LIBELF_LIBRARY} ${LIBZ_LIBRARY} Threads::Threads)
     add_dependencies(${example}_loader all_bpf_objects)
@@ -89,8 +88,8 @@ message(STATUS "ebpf_oop_design configured")
 
 # Add a small runner that forces ActionLoop to initialize and start its thread immediately
 add_executable(action_runner
-    ${EOPPD_SOURCE_DIR}/action/main.cpp
-    ${EOPPD_SOURCE_DIR}/action/ActionLoop.cpp
+    ${EOPPD_SOURCE_DIR}/actions/main.cpp
+    ${EOPPD_SOURCE_DIR}/actions/ActionLoop.cpp
 )
 target_link_libraries(action_runner PRIVATE Threads::Threads)
 install(TARGETS action_runner DESTINATION /opt/ebpf_oop_design)

@@ -2,19 +2,20 @@
 
 #include <string>
 
-#include <boost/asio/awaitable.hpp>
-
-#include "../action/ActionLoop.hpp"
+#include "../coroutine/async_mutex.hpp"
+#include "ActionLoop.hpp"
 
 class LogAction final : public IAction {
 public:
     LogAction(std::string message, std::string path);
 
-    boost::asio::awaitable<void> execute_async() override;
+    FireForget execute_async() noexcept override;
 
     static bool ensure_log_directory(const std::string& path) noexcept;
 
 private:
     std::string message_;
     std::string path_;
+
+    static AsyncFileMutex g_file_mgr;
 };

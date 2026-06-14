@@ -7,8 +7,8 @@
 #include <unistd.h>
 
 #include "cgroup_egress.hpp"
-#include "../action/ActionLoop.hpp"
-#include "../log_action/LogAction.hpp"
+#include "../actions/ActionLoop.hpp"
+#include "../actions/LogAction.hpp"
 
 struct cgroup_egress_event {
     __u64 ts_ns;

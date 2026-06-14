@@ -13,8 +13,8 @@
 #include <unistd.h>
 
 #include "socket_filter.hpp"
-#include "../action/ActionLoop.hpp"
-#include "../log_action/LogAction.hpp"
+#include "../actions/ActionLoop.hpp"
+#include "../actions/LogAction.hpp"
 
 struct socket_filter_event {
     __u64 ts_ns;
