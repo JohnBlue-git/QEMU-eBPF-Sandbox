@@ -54,7 +54,9 @@ CgroupEgressProgram& CgroupEgressProgram::operator=(CgroupEgressProgram&& other)
 }
 
 CgroupEgressProgram::~CgroupEgressProgram() noexcept
-{}
+{
+    this->detachProgram();
+}
 
 bool CgroupEgressProgram::attachProgram() noexcept
 {

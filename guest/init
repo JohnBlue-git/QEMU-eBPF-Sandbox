@@ -108,9 +108,10 @@ if true; then
         /opt/ebpf_oop_design/syscall_trace_loader >/var/log/ebpf_oop_design/syscall_trace_loader.log 2>&1 &
     fi
 
-    if [ -x /opt/ebpf_oop_design/xdp_drop_loader ] && [ -n "$IFACE" ]; then
+    if [ -x /opt/ebpf_oop_design/xdp_drop_loader ] && [ -n "$IFACE" ] && [ ! -f /tmp/xdp_loader_started ]; then
         echo "[guest-init] starting XDP loader on $IFACE"
         /opt/ebpf_oop_design/xdp_drop_loader "$IFACE" >/var/log/ebpf_oop_design/xdp_loader.log 2>&1 &
+        echo "1" > /tmp/xdp_loader_started
     fi
 
     if [ -x /opt/ebpf_oop_design/socket_filter_loader ]; then
@@ -153,9 +154,10 @@ if true; then
         /opt/ebpf_boost_asio_design/syscall_trace_loader >/var/log/ebpf_boost_asio_design/syscall_trace_loader.log 2>&1 &
     fi
 
-    if [ -x /opt/ebpf_boost_asio_design/xdp_drop_loader ] && [ -n "$IFACE" ]; then
+    if [ -x /opt/ebpf_boost_asio_design/xdp_drop_loader ] && [ -n "$IFACE" ] && [ ! -f /tmp/xdp_loader_started ]; then
         echo "[guest-init] starting XDP loader on $IFACE"
         /opt/ebpf_boost_asio_design/xdp_drop_loader "$IFACE" >/var/log/ebpf_boost_asio_design/xdp_loader.log 2>&1 &
+        echo "1" > /tmp/xdp_loader_started
     fi
 
     if [ -x /opt/ebpf_boost_asio_design/socket_filter_loader ]; then

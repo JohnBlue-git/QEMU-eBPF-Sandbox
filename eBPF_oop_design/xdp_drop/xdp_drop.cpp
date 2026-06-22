@@ -59,7 +59,9 @@ XdpDropProgram& XdpDropProgram::operator=(XdpDropProgram&& other) noexcept
 }
 
 XdpDropProgram::~XdpDropProgram() noexcept
-{}
+{
+    this->detachProgram();
+}
 
 bool XdpDropProgram::attachProgram() noexcept
 {

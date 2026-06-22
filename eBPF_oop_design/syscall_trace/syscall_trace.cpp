@@ -70,7 +70,9 @@ SyscallTraceProgram& SyscallTraceProgram::operator=(SyscallTraceProgram&& other)
 }
 
 SyscallTraceProgram::~SyscallTraceProgram() noexcept
-{}
+{
+    this->detachProgram();
+}
 
 bool SyscallTraceProgram::attachProgram() noexcept {
     this->prog_openat = bpf_object__find_program_by_name(this->object_, "trace_sys_exit_openat");

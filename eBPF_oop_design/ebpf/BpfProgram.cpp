@@ -13,9 +13,10 @@ BpfProgram::BpfProgram(std::string object_path) noexcept
 
 BpfProgram::~BpfProgram() noexcept
 {
-    this->BpfProgram::detachFilter();
+    this->BpfProgram::releaseRingBuffer();
     this->BpfProgram::closeObject();
     this->object_ = nullptr;
+    this->loaded_ = false;
 }
 
 BpfProgram::BpfProgram(BpfProgram&& other) noexcept

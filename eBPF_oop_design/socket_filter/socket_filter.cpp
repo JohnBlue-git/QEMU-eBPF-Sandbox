@@ -63,7 +63,9 @@ SocketFilterProgram& SocketFilterProgram::operator=(SocketFilterProgram&& other)
 }
 
 SocketFilterProgram::~SocketFilterProgram() noexcept
-{}
+{
+    this->detachProgram();
+}
 
 bool SocketFilterProgram::attachProgram() noexcept {
     int prog_fd = getProgramFd("filter_tcp_only");
