@@ -14,6 +14,14 @@ Using an OOP design offers several advantages for eBPF program management:
 - **Asynchronous Processing**: Leverages coroutines for non-blocking event handling, improving performance and responsiveness in high-throughput scenarios.
 - **Type Safety**: Strong typing in C++ reduces runtime errors and enhances code reliability compared to procedural approaches.
 
+## CO-RE Struct Access
+
+The shared `*.bpf.c` files include `vmlinux.h`, which is generated from the target kernel's BTF. Kernel context types used by the hooks are therefore not local copies: for example, `struct xdp_md` and `struct __sk_buff` come from `vmlinux.h`, while `struct trace_event_raw_sys_exit` in the syscall example also comes from that generated header.
+
+Use direct field access for the BPF context supplied by a hook when reading its stable context fields, such as `ctx->data_end` in the XDP example or `skb->len` in the socket and cgroup examples. Use `BPF_CORE_READ(pointer, field)` for ordinary kernel structs, nested fields, pointer chains, or fields whose layout may vary between kernel versions. `BPF_CORE_READ` records a CO-RE relocation that libbpf resolves against the target kernel's BTF at load time.
+
+The syscall example in `syscall_trace/syscall_trace.bpf.c` demonstrates this explicitly with `BPF_CORE_READ(args, id)`. The `*_event` structs declared in those files are application-owned event formats, not structs from `vmlinux.h`, so their fields are accessed directly.
+
 ## Design Variants and Comparisons
 
 This repository offers **three complementary design approaches** for eBPF program management:
@@ -50,7 +58,9 @@ The **OOP Design** serves as an excellent teaching vehicle and stepping stone, w
   - `BpfProgram.hpp/cpp` — Abstract base class for eBPF program management.
 - `xdp_drop/`, `socket_filter/`, `cgroup_egress/`, `syscall_trace/` — Specific eBPF program implementations, each containing:
   - `main.cpp` — Entry point for the loader.
-  - `[program].bpf.c` — eBPF kernel program source.
+   - `[program].cpp/.hpp` — OOP user-space wrapper.
+
+The kernel-side source is shared with the other designs and lives only in `../eBPF_basic_design/<program>/<program>.bpf.c`. The OOP `CMakeLists.txt` compiles those files directly and installs a copy alongside the OOP artifacts for runtime inspection; it does not maintain another source copy.
   - `[program].hpp/cpp` — User-space program wrapper.
 - `build/` — Build artifacts and compiled binaries.
 

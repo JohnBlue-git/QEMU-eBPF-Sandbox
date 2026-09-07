@@ -33,20 +33,22 @@ That gives you a much more standard eBPF development model than hand-maintaining
 
 This does not mean one binary runs on every kernel with no constraints. It means the program is built from real kernel type metadata and can adapt to compatible layout differences through CO-RE relocation.
 
-## How `bpf_core_read` Fits In
+## Direct `vmlinux.h` Access and `BPF_CORE_READ`
 
-`bpf_core_read` and the `BPF_CORE_READ(...)` macros are the usual way to read fields from kernel data structures in a CO-RE-friendly way.
+There are two related ways to access types declared by `vmlinux.h`:
 
-- They tell libbpf which field is being accessed.
-- libbpf records relocation information into the ELF object.
-- when the object is loaded, libbpf uses the target kernel's BTF to resolve the correct offset.
+- Direct access is appropriate for the BPF program context supplied by a hook, such as `ctx->data_end` for `struct xdp_md` or `skb->len` for `struct __sk_buff`. These context fields are part of the BPF hook ABI and the verifier understands these accesses.
+- Use `BPF_CORE_READ(ptr, field)` for ordinary kernel structs, nested fields, pointers, or fields whose layout can differ between kernel versions. The macro records a CO-RE relocation, and libbpf resolves the field offset using the target kernel's BTF when loading the program.
+- Do not hand-copy a kernel struct into the source just to read one field. Include `vmlinux.h` and use the type it declares so the CO-RE metadata can describe the access.
 
-In this repository, the syscall tracing example uses `BPF_CORE_READ(ctx, id)` to read the syscall id from the tracepoint context instead of depending on a hand-written struct layout.
+In this repository, `syscall_trace/syscall_trace.bpf.c` uses `BPF_CORE_READ(args, id)` to read `id` from the `struct trace_event_raw_sys_exit` tracepoint context. That struct is declared in `vmlinux.h`; the syscall example uses the macro because it is a kernel tracepoint record rather than a BPF context such as `struct xdp_md`.
+
+The event structs such as `struct syscall_trace_event` are local ABI structs owned by this example, not kernel structs from `vmlinux.h`. They can be accessed directly because both the BPF program and its user-space loader use the layout defined in this repository.
 
 ## How the Pieces Fit Together
 
 - `vmlinux.h`: generated kernel type header for CO-RE builds.
-- `xdp_drop/*.bpf.c`, `syscall_trace/*.bpf.c`, `socket_filter/*.bpf.c`, and `cgroup_egress/*.bpf.c`: kernel-side eBPF source code compiled for the BPF target.
+- `xdp_drop/*.bpf.c`, `syscall_trace/*.bpf.c`, `socket_filter/*.bpf.c`, and `cgroup_egress/*.bpf.c`: the canonical kernel-side eBPF source code compiled for the BPF target and reused by the OOP and Boost.Asio designs.
 - `xdp_drop/*.c`, `syscall_trace/*.c`, `socket_filter/*.c`, and `cgroup_egress/*.c`: user-space loaders built with libbpf.
 - `build/*.bpf.o`: ELF objects containing BPF bytecode, BTF, and CO-RE relocation metadata.
 - `build/*_loader`: executables that call libbpf to load and attach the programs.
@@ -88,6 +90,10 @@ eBPF_basic_design/
 ### vmlinux.h
 
 This file is generated, not hand-written. It comes from kernel BTF and provides the kernel types used by the CO-RE examples.
+
+### Shared kernel-side source
+
+The `.bpf.c` files in this directory are the only copies of the four kernel-side programs in the repository. `eBPF_oop_design/CMakeLists.txt` and `eBPF_boost_asio_design/CMakeLists.txt` compile these same files while supplying their own user-space loaders and event-processing implementations. Keep kernel hook logic here so the three designs cannot drift apart.
 
 ### xdp_drop/xdp_drop.bpf.c
 

@@ -40,7 +40,8 @@ Both designs share the same OOP principles and event-driven architecture, but di
   - `async_mutex.hpp` — AsyncFileStreamManager for concurrent file access with stream caching.
 - `xdp_drop/`, `socket_filter/`, `cgroup_egress/`, `syscall_trace/` — Specific eBPF program implementations, each containing:
   - `main.cpp` — Entry point for the loader.
-  - References eBPF kernel programs and wrappers from `../eBPF_oop_design/`.
+   - References the canonical kernel programs from `../eBPF_basic_design/` and user-space wrappers from `../eBPF_oop_design/`.
+- `../eBPF_basic_design/<program>/<program>.bpf.c` — The single canonical copy of each kernel-side eBPF program.
 - `build/` — Build artifacts and compiled binaries.
 
 ## Boost.Asio Architecture
@@ -206,7 +207,8 @@ sudo apt-get install -y \
 The CMakeLists.txt automatically:
 - Configures Boost.Asio with C++20 coroutine support
 - Sets up libbpf and elfutils linking
-- Handles cross-directory includes for eBPF kernel programs from `../eBPF_oop_design/`
+- Compiles the shared kernel-side eBPF programs from `../eBPF_basic_design/`
+- Reuses OOP user-space wrappers from `../eBPF_oop_design/`
 
 ## How to Run and Verify
 

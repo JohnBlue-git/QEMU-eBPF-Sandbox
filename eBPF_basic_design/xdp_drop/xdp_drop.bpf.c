@@ -9,6 +9,8 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
+/* struct xdp_md comes from vmlinux.h, generated from kernel BTF. */
+
 struct xdp_drop_event {
     __u64 ts_ns;
     __u32 pkt_len;

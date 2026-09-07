@@ -8,6 +8,8 @@
 #include "vmlinux.h"
 #include <bpf/bpf_helpers.h>
 
+/* struct __sk_buff comes from vmlinux.h, generated from kernel BTF. */
+
 #define IPPROTO_TCP 6
 
 struct socket_filter_event {

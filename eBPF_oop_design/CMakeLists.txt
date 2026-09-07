@@ -21,6 +21,7 @@ find_library(LIBZ_LIBRARY z HINTS /usr/lib /usr/local/lib /usr/lib64 /usr/local/
 find_package(Threads REQUIRED)
 
 set(EOPPD_SOURCE_DIR ${CMAKE_SOURCE_DIR})
+set(EBPF_BASIC_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../eBPF_basic_design")
 set(EOPPD_BUILD_DIR ${CMAKE_BINARY_DIR})
 set(EOPPD_VMLINUX_HEADER vmlinux.h)
 set(EOPPD_VMLINUX_BTF /sys/kernel/btf/vmlinux)
@@ -40,12 +41,12 @@ add_custom_command(
 
 # Macro to generate bpf object build rules for each example
 foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
-    set(BPF_SRC ${EOPPD_SOURCE_DIR}/${example}/${example}.bpf.c)
+    set(BPF_SRC ${EBPF_BASIC_SOURCE_DIR}/${example}/${example}.bpf.c)
     set(BPF_OBJ ${example}.bpf.o)
     add_custom_command(
         OUTPUT ${BPF_OBJ}
         WORKING_DIRECTORY ${EOPPD_BUILD_DIR}
-        COMMAND ${CLANG_EXECUTABLE} -I${EOPPD_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_BUILD_DIR} -O2 -g -target bpf -c ${BPF_SRC} -o ${BPF_OBJ}
+        COMMAND ${CLANG_EXECUTABLE} -I${EBPF_BASIC_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_BUILD_DIR} -O2 -g -target bpf -c ${BPF_SRC} -o ${BPF_OBJ}
         DEPENDS ${BPF_SRC} ${EOPPD_VMLINUX_HEADER}
         COMMENT "Compiling ${example} BPF object"
     )
@@ -81,7 +82,7 @@ foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
     add_dependencies(${example}_loader all_bpf_objects)
     install(FILES ${EOPPD_BUILD_DIR}/${example}.bpf.o DESTINATION /opt/ebpf_oop_design)
     install(TARGETS ${example}_loader DESTINATION /opt/ebpf_oop_design)
-    install(FILES ${EOPPD_SOURCE_DIR}/${example}/${example}.bpf.c DESTINATION /opt/ebpf_oop_design/${example})
+    install(FILES ${EBPF_BASIC_SOURCE_DIR}/${example}/${example}.bpf.c DESTINATION /opt/ebpf_oop_design/${example})
 endforeach()
 
 message(STATUS "ebpf_oop_design configured")

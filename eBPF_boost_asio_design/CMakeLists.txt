@@ -45,6 +45,7 @@ else()
 endif()
 
 set(EOPPD_EBPF_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../eBPF_oop_design")
+set(EBPF_BASIC_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../eBPF_basic_design")
 set(EOPPD_SOURCE_DIR ${CMAKE_SOURCE_DIR})
 set(EOPPD_BUILD_DIR ${CMAKE_BINARY_DIR})
 set(EOPPD_VMLINUX_HEADER vmlinux.h)
@@ -64,12 +65,12 @@ add_custom_command(
 
 # Macro to generate bpf object build rules for each example
 foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
-    set(BPF_SRC ${EOPPD_EBPF_SOURCE_DIR}/${example}/${example}.bpf.c)
+    set(BPF_SRC ${EBPF_BASIC_SOURCE_DIR}/${example}/${example}.bpf.c)
     set(BPF_OBJ ${example}.bpf.o)
     add_custom_command(
         OUTPUT ${BPF_OBJ}
         WORKING_DIRECTORY ${EOPPD_BUILD_DIR}
-        COMMAND ${CLANG_EXECUTABLE} -I${EOPPD_EBPF_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_BUILD_DIR} -O2 -g -target bpf -c ${BPF_SRC} -o ${BPF_OBJ}
+        COMMAND ${CLANG_EXECUTABLE} -I${EBPF_BASIC_SOURCE_DIR} -I${LIBBPF_INCLUDE_DIR} -I${EOPPD_BUILD_DIR} -O2 -g -target bpf -c ${BPF_SRC} -o ${BPF_OBJ}
         DEPENDS ${BPF_SRC} ${EOPPD_VMLINUX_HEADER}
         COMMENT "Compiling ${example} BPF object"
     )
@@ -107,7 +108,7 @@ foreach(example xdp_drop syscall_trace socket_filter cgroup_egress)
     add_dependencies(${example}_loader all_bpf_objects)
     install(FILES ${EOPPD_BUILD_DIR}/${example}.bpf.o DESTINATION /opt/ebpf_boost_asio_design)
     install(TARGETS ${example}_loader DESTINATION /opt/ebpf_boost_asio_design)
-    install(FILES ${EOPPD_EBPF_SOURCE_DIR}/${example}/${example}.bpf.c DESTINATION /opt/ebpf_boost_asio_design/${example})
+    install(FILES ${EBPF_BASIC_SOURCE_DIR}/${example}/${example}.bpf.c DESTINATION /opt/ebpf_boost_asio_design/${example})
 endforeach()
 
 message(STATUS "ebpf_boost_asio_design configured")

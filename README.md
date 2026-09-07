@@ -127,25 +127,27 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 │   ├── actions/             # Action loop and async logging implementation
 │   ├── coroutine/           # C++20 coroutine utilities
 │   ├── ebpf/                # Base eBPF program wrapper
-│   ├── xdp_drop/            # XDP program (OOP design)
-│   ├── syscall_trace/       # Syscall trace program (OOP design)
-│   ├── socket_filter/       # Socket filter program (OOP design)
-│   ├── cgroup_egress/       # Cgroup egress program (OOP design)
+│   ├── xdp_drop/            # OOP loader and user-space wrapper
+│   ├── syscall_trace/       # OOP loader and user-space wrapper
+│   ├── socket_filter/       # OOP loader and user-space wrapper
+│   ├── cgroup_egress/       # OOP loader and user-space wrapper
 │   └── build/               # Compiled artifacts
 ├── eBPF_boost_asio_design/  # Production C++ with Boost.Asio async I/O
 │   ├── CMakeLists.txt       # CMake build configuration with external dependencies
 │   ├── README.md
 │   ├── actions/             # Boost.Asio action loop and async logging implementation
 │   ├── coroutine/           # Boost.Asio async utilities (stream caching, file locking)
-│   ├── xdp_drop/            # XDP program (Boost.Asio design)
-│   ├── syscall_trace/       # Syscall trace program (Boost.Asio design)
-│   ├── socket_filter/       # Socket filter program (Boost.Asio design)
-│   ├── cgroup_egress/       # Cgroup egress program (Boost.Asio design)
+│   ├── xdp_drop/            # Boost.Asio loader and user-space wrapper
+│   ├── syscall_trace/       # Boost.Asio loader and user-space wrapper
+│   ├── socket_filter/       # Boost.Asio loader and user-space wrapper
+│   ├── cgroup_egress/       # Boost.Asio loader and user-space wrapper
 │   └── build/               # Compiled artifacts and external dependencies
 ├── guest/
 │   └── init                 # Guest init; auto-attempts eBPF load
 └── build/                   # Generated kernel and rootfs artifacts
 ```
+
+The canonical kernel-side sources are `eBPF_basic_design/<example>/<example>.bpf.c`. The OOP and Boost.Asio directories contain only their design-specific user-space code; their CMake files compile the canonical Basic Design sources.
 
 ## System Requirements
 
@@ -173,6 +175,15 @@ This version represents the currently fixed, verified default. If needed, the bu
 If you need to change the version, I can help evaluate compatibility with the eBPF examples.
 
 ## eBPF
+
+The four kernel-side programs have one canonical source copy under `eBPF_basic_design/`:
+
+- `eBPF_basic_design/xdp_drop/xdp_drop.bpf.c`
+- `eBPF_basic_design/syscall_trace/syscall_trace.bpf.c`
+- `eBPF_basic_design/socket_filter/socket_filter.bpf.c`
+- `eBPF_basic_design/cgroup_egress/cgroup_egress.bpf.c`
+
+The OOP and Boost.Asio designs reuse these files from CMake and add their own user-space wrappers, loaders, and event-processing architecture. They do not keep duplicate `.bpf.c` files.
 
 This project provides comprehensive eBPF learning and development resources with three distinct design approaches:
 

@@ -6,7 +6,10 @@
  */
 
 #include "vmlinux.h"
+#include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
+
+/* struct trace_event_raw_sys_exit comes from vmlinux.h, generated from kernel BTF. */
 
 struct syscall_trace_event {
     __u64 ts_ns;
@@ -37,7 +40,7 @@ int trace_sys_exit_openat(void *ctx)
     struct syscall_trace_event *event;
     struct trace_event_raw_sys_exit *args = (struct trace_event_raw_sys_exit *)ctx;
 
-    syscall_id = (__u32)args->id;
+    syscall_id = (__u32)BPF_CORE_READ(args, id);
     key = syscall_id;
 
     count = bpf_map_lookup_elem(&syscall_counts, &key);
@@ -70,7 +73,7 @@ int trace_sys_exit_read(void *ctx)
     struct syscall_trace_event *event;
     struct trace_event_raw_sys_exit *args = (struct trace_event_raw_sys_exit *)ctx;
 
-    syscall_id = (__u32)args->id;
+    syscall_id = (__u32)BPF_CORE_READ(args, id);
     key = syscall_id;
 
     count = bpf_map_lookup_elem(&syscall_counts, &key);
@@ -103,7 +106,7 @@ int trace_sys_exit_write(void *ctx)
     struct syscall_trace_event *event;
     struct trace_event_raw_sys_exit *args = (struct trace_event_raw_sys_exit *)ctx;
 
-    syscall_id = (__u32)args->id;
+    syscall_id = (__u32)BPF_CORE_READ(args, id);
     key = syscall_id;
 
     count = bpf_map_lookup_elem(&syscall_counts, &key);
