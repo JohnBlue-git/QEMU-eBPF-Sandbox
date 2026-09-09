@@ -2,7 +2,7 @@
 
 This project implements an object-oriented (OOP) design for loading and managing eBPF programs in user space, focusing on modularity, reusability, and asynchronous event handling. It provides a C++ wrapper that separates concerns between eBPF object loading, program attachment, and event processing through an action-based architecture.
 
-> **Note**: This design uses custom C++20 coroutines for async execution. For a production-grade variant using **Boost.Asio** with superior performance and scalability, see [eBPF Boost.Asio Design](../eBPF_boost_asio_design/README.md).
+> **Note**: This design uses custom C++20 coroutines for async execution. For a production-grade variant using **Boost.Asio** with superior performance and scalability, see [BOOST_ASIO_DESIGN.md](BOOST_ASIO_DESIGN.md).
 
 ## Why OOP Design?
 
@@ -38,9 +38,9 @@ This repository offers **three complementary design approaches** for eBPF progra
 | **Scalability** | Limited | Good | Excellent (1000+ events) |
 
 **Choosing Your Design**:
-- **I'm learning eBPF**: Start with [Basic Design](../eBPF_basic_design/README.md)
+- **I'm learning eBPF**: Start with [BASIC_DESIGN.md](BASIC_DESIGN.md)
 - **I want OOP + coroutines**: Use this OOP Design
-- **I need production performance**: Migrate to [Boost.Asio Design](../eBPF_boost_asio_design/README.md)
+- **I need production performance**: Migrate to [BOOST_ASIO_DESIGN.md](BOOST_ASIO_DESIGN.md)
 
 The **OOP Design** serves as an excellent teaching vehicle and stepping stone, with code structure that translates directly to the Boost.Asio variant. Many companies start with the OOP design for prototyping, then switch to Boost.Asio when production demands arise.
 

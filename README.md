@@ -2,6 +2,14 @@
 
 A practical eBPF development environment using QEMU, optimized for GitHub Codespace with 2 CPUs. Includes both procedural and object-oriented eBPF program designs.
 
+## Design documents
+
+- [DESIGN.html (GitHub)](https://github.com/JohnBlue-git/QEMU-eBPF-Sandbox/blob/main/DESIGN.html)
+- [DESIGN.html (rendered)](https://htmlpreview.github.io/?https://github.com/JohnBlue-git/QEMU-eBPF-Sandbox/blob/main/DESIGN.html)
+- [BASIC_DESIGN.md](BASIC_DESIGN.md)
+- [OOP_DESIGN.md](OOP_DESIGN.md)
+- [BOOST_ASIO_DESIGN.md](BOOST_ASIO_DESIGN.md)
+
 ## Features
 
 - **Lightweight QEMU VM**: Minimal Linux kernel + BusyBox for resource efficiency
@@ -97,7 +105,7 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 - `AsyncFileStreamManager`: Stream descriptor pooling for connection reuse
 - Automatic platform-optimal I/O multiplexing (epoll on Linux)
 
-**Comparison**: See [eBPF Boost.Asio Design README](eBPF_boost_asio_design/README.md#comparison-with-oop-design) for a detailed comparison with the OOP design.
+**Comparison**: See [BOOST_ASIO_DESIGN.md](BOOST_ASIO_DESIGN.md#comparison-with-oop-design) for a detailed comparison with the OOP design.
 
 ## Project Structure
 
@@ -111,9 +119,12 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 │   ├── run-qemu.sh          # Run QEMU
 │   ├── run_eBPF_basic_design.sh  # Host-side eBPF helper (basic design)
 │   └── test.sh              # eBPF validation tests
+├── BASIC_DESIGN.md          # Canonical eBPF fundamentals and CO-RE guidance
+├── OOP_DESIGN.md            # OOP architecture and event-flow design
+├── BOOST_ASIO_DESIGN.md     # Boost.Asio async design and performance notes
+├── DESIGN.html             # Architecture overview rendered as HTML
 ├── eBPF_basic_design/       # Procedural C implementation with CO-RE & BTF
 │   ├── Makefile
-│   ├── README.md
 │   ├── vmlinux.h            # Generated kernel types for CO-RE
 │   ├── xdp_drop/            # XDP packet drop example
 │   ├── syscall_trace/       # Syscall tracing example
@@ -123,7 +134,6 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 │   └── build/               # Compiled eBPF objects and loaders
 ├── eBPF_oop_design/         # Modern C++ OOP design with coroutines
 │   ├── CMakeLists.txt       # CMake build configuration
-│   ├── README.md
 │   ├── actions/             # Action loop and async logging implementation
 │   ├── coroutine/           # C++20 coroutine utilities
 │   ├── ebpf/                # Base eBPF program wrapper
@@ -134,7 +144,6 @@ Located in `eBPF_boost_asio_design/`, this design combines OOP modularity with *
 │   └── build/               # Compiled artifacts
 ├── eBPF_boost_asio_design/  # Production C++ with Boost.Asio async I/O
 │   ├── CMakeLists.txt       # CMake build configuration with external dependencies
-│   ├── README.md
 │   ├── actions/             # Boost.Asio action loop and async logging implementation
 │   ├── coroutine/           # Boost.Asio async utilities (stream caching, file locking)
 │   ├── xdp_drop/            # Boost.Asio loader and user-space wrapper
@@ -187,11 +196,11 @@ The OOP and Boost.Asio designs reuse these files from CMake and add their own us
 
 This project provides comprehensive eBPF learning and development resources with three distinct design approaches:
 
-1. **eBPF Fundamentals**: For a deeper explanation of what eBPF does, how the examples work, and how CO-RE/BTF are used here, see [eBPF_basic_design/README.md](eBPF_basic_design/README.md).
+1. **eBPF Fundamentals**: For a deeper explanation of what eBPF does, how the examples work, and how CO-RE/BTF are used here, see [BASIC_DESIGN.md](BASIC_DESIGN.md).
 
-2. **OOP Architecture**: For details on C++ object-oriented architecture, async event handling with custom coroutines, and the action-based design pattern, see [eBPF_oop_design/README.md](eBPF_oop_design/README.md).
+2. **OOP Architecture**: For details on C++ object-oriented architecture, async event handling with custom coroutines, and the action-based design pattern, see [OOP_DESIGN.md](OOP_DESIGN.md).
 
-3. **Production-Grade Async**: For production systems, learn about Boost.Asio integration, stream descriptor caching, epoll-based event multiplexing, and high-throughput performance optimization in [eBPF_boost_asio_design/README.md](eBPF_boost_asio_design/README.md).
+3. **Production-Grade Async**: For production systems, learn about Boost.Asio integration, stream descriptor caching, epoll-based event multiplexing, and high-throughput performance optimization in [BOOST_ASIO_DESIGN.md](BOOST_ASIO_DESIGN.md).
 
 Choose the design that best fits your use case:
 - **Learning**: Start with Basic Design (C + libbpf)

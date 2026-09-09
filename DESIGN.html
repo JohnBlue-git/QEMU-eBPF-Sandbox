@@ -1,0 +1,945 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>QEMU eBPF Sandbox Design</title>
+    <style>
+      :root {
+        --bg: #f4f7fb;
+        --panel: #ffffff;
+        --ink: #17212b;
+        --muted: #536174;
+        --line: #d8e0ea;
+        --accent: #0f766e;
+        --accent-soft: #dff7f5;
+        --user: #4f46e5;
+        --user-soft: #ecebff;
+        --warn: #92400e;
+        --warn-soft: #fff2d9;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font: 16px/1.7 Georgia, "Times New Roman", serif;
+      }
+      .page {
+        max-width: 1100px;
+        margin: 0 auto;
+        padding: 48px 24px 72px;
+      }
+      .masthead {
+        margin-bottom: 28px;
+      }
+      .eyebrow {
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        font: 700 12px/1.5 "SFMono-Regular", Consolas, monospace;
+        color: var(--muted);
+        margin: 0 0 14px;
+      }
+      h1 {
+        margin: 0 0 10px;
+        font-size: clamp(2.2rem, 4vw, 3.1rem);
+        line-height: 1.1;
+      }
+      .subtitle {
+        margin: 0 0 18px;
+        max-width: 66ch;
+        color: var(--muted);
+        font-size: 1.15rem;
+      }
+      .tags {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        list-style: none;
+        padding: 0;
+        margin: 0 0 24px;
+      }
+      .tags li {
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        padding: 6px 12px;
+        background: var(--accent-soft);
+        color: var(--accent);
+        font: 700 11px/1.4 "SFMono-Regular", Consolas, monospace;
+      }
+      .divider {
+        border: none;
+        border-top: 1px solid var(--line);
+        margin: 0 0 28px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 240px minmax(0, 1fr);
+        gap: 32px;
+      }
+      nav {
+        position: sticky;
+        top: 24px;
+        align-self: start;
+      }
+      nav .label {
+        font: 700 11px/1.4 "SFMono-Regular", Consolas, monospace;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+        margin-bottom: 12px;
+      }
+      nav ol {
+        list-style: none;
+        margin: 0;
+        padding-left: 14px;
+        border-left: 1px solid var(--line);
+      }
+      nav li { margin: 8px 0; }
+      nav a {
+        color: var(--ink);
+        text-decoration: none;
+        font: 500 13px/1.5 "SFMono-Regular", Consolas, monospace;
+      }
+      nav a:hover { color: var(--accent); }
+      main {
+        min-width: 0;
+      }
+      section {
+        margin-bottom: 42px;
+      }
+      h2 {
+        font-size: 1.45rem;
+        margin: 0 0 16px;
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+      }
+      .num {
+        color: var(--accent);
+        font: 700 12px/1.4 "SFMono-Regular", Consolas, monospace;
+      }
+      h3 {
+        font-size: 1.08rem;
+        margin: 24px 0 10px;
+        font-family: "SFMono-Regular", Consolas, monospace;
+      }
+      h4 {
+        font-size: 0.95rem;
+        margin: 18px 0 8px;
+        color: var(--muted);
+        font-family: "SFMono-Regular", Consolas, monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      p, li {
+        color: var(--ink);
+        max-width: 68ch;
+      }
+      ul, ol {
+        padding-left: 22px;
+      }
+      code {
+        font-family: "SFMono-Regular", Consolas, monospace;
+        background: #edf2f7;
+        border-radius: 4px;
+        padding: 2px 6px;
+        font-size: 0.9em;
+      }
+      .panel {
+        background: #f8fafc;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        overflow-x: auto;
+        margin: 16px 0;
+      }
+      .panel-label {
+        font: 700 11px/1.4 "SFMono-Regular", Consolas, monospace;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+        padding: 10px 18px 0;
+      }
+      pre {
+        margin: 0;
+        padding: 16px 18px;
+        font: 13px/1.6 "SFMono-Regular", Consolas, monospace;
+        color: var(--ink);
+        white-space: pre;
+      }
+      .table-wrap {
+        overflow-x: auto;
+        margin: 14px 0;
+      }
+      table {
+        min-width: 640px;
+        border-collapse: collapse;
+        font-size: 0.95rem;
+      }
+      th, td {
+        padding: 10px 12px;
+        border-bottom: 1px solid var(--line);
+        vertical-align: top;
+        text-align: left;
+      }
+      th {
+        font: 700 12px/1.4 "SFMono-Regular", Consolas, monospace;
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+      }
+      td code { white-space: nowrap; }
+      .note {
+        background: var(--user-soft);
+        border-left: 4px solid var(--user);
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin: 16px 0;
+      }
+      .warn {
+        background: var(--warn-soft);
+        border-left: 4px solid var(--warn);
+        padding: 12px 14px;
+        border-radius: 8px;
+        margin: 16px 0;
+      }
+      blockquote {
+        margin: 0 0 20px;
+        padding: 10px 16px;
+        border-left: 3px solid var(--line);
+        color: var(--muted);
+        font-size: 0.95rem;
+      }
+      a { color: var(--accent); }
+
+      /* Chip-based class diagrams */
+      .chip {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 7px 14px;
+        border-radius: 999px;
+        border: 1px solid var(--line);
+        background: #ffffff;
+        font: 700 12px/1.4 "SFMono-Regular", Consolas, monospace;
+        color: var(--ink);
+        box-shadow: 0 1px 0 rgba(15, 23, 42, 0.02);
+        white-space: nowrap;
+      }
+      .chip-kernel { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 35%, var(--line)); color: var(--accent); }
+      .chip-user { background: var(--user-soft); border-color: color-mix(in srgb, var(--user) 35%, var(--line)); color: var(--user); }
+      .chip-warn { background: var(--warn-soft); border-color: color-mix(in srgb, var(--warn) 35%, var(--line)); color: var(--warn); }
+      .chip-base {
+        font-size: 13px;
+        padding: 9px 18px;
+        border-width: 2px;
+        border-color: var(--accent);
+        background: var(--accent-soft);
+        color: var(--accent);
+      }
+      .chip-note {
+        margin-top: 6px;
+        font: 11px/1.5 "SFMono-Regular", Consolas, monospace;
+        color: var(--muted);
+        max-width: 16ch;
+      }
+      .class-tree {
+        margin: 20px 0;
+        text-align: center;
+        overflow-x: auto;
+        padding-bottom: 4px;
+      }
+      .class-tree ul {
+        display: flex;
+        justify-content: center;
+        padding-top: 22px;
+        position: relative;
+        margin: 0;
+        list-style: none;
+      }
+      .class-tree li {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        list-style: none;
+        padding: 22px 14px 0;
+        position: relative;
+      }
+      .class-tree li::before,
+      .class-tree li::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 50%;
+        border-top: 2px solid var(--line);
+        width: 50%;
+        height: 22px;
+      }
+      .class-tree li::after {
+        right: auto;
+        left: 50%;
+        border-left: 2px solid var(--line);
+      }
+      .class-tree li:only-child::before,
+      .class-tree li:only-child::after {
+        display: none;
+      }
+      .class-tree li:only-child {
+        padding-top: 0;
+      }
+      .class-tree li:first-child::before,
+      .class-tree li:last-child::after {
+        border: 0 none;
+      }
+      .class-tree li:last-child::before {
+        border-right: 2px solid var(--line);
+        border-radius: 0 6px 0 0;
+      }
+      .class-tree li:first-child::after {
+        border-radius: 6px 0 0 0;
+      }
+      .class-tree ul ul::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        border-left: 2px solid var(--line);
+        width: 0;
+        height: 22px;
+      }
+      .rel-row {
+        display: flex;
+        align-items: flex-start;
+        justify-content: center;
+        gap: 16px;
+        margin: 14px 0;
+        flex-wrap: wrap;
+      }
+      .rel-node {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 6px;
+      }
+      .rel-arrow {
+        text-align: center;
+        color: var(--muted);
+        font-size: 1.15rem;
+        line-height: 1.3;
+      }
+      .rel-arrow small {
+        display: block;
+        font: 700 10px/1.4 "SFMono-Regular", Consolas, monospace;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+      }
+      @media (max-width: 800px) {
+        .layout { grid-template-columns: 1fr; }
+        nav { position: static; }
+        nav ol { display: flex; flex-wrap: wrap; gap: 10px 18px; border-left: none; padding-left: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="masthead">
+        <p class="eyebrow">Design Reference · qemu-ebpf-sandbox</p>
+        <h1>QEMU eBPF Sandbox</h1>
+        <p class="subtitle">
+          Three complementary implementations of the same eBPF flow: one canonical set of kernel
+          programs, and three different ways to turn their ring-buffer events into a log line.
+        </p>
+        <ul class="tags">
+          <li>QEMU</li>
+          <li>eBPF</li>
+          <li>libbpf</li>
+          <li>CO-RE / BTF</li>
+          <li>C++20 Coroutines</li>
+          <li>Boost.Asio</li>
+        </ul>
+        <hr class="divider" />
+      </header>
+
+      <div class="layout">
+        <nav>
+          <div class="label">Sections</div>
+          <ol>
+            <li><a href="#overview">Overview</a></li>
+            <li><a href="#build">Build System</a></li>
+            <li><a href="#kernel">Kernel Layer</a></li>
+            <li><a href="#basic">Basic Design</a></li>
+            <li><a href="#oop">OOP Design</a></li>
+            <li><a href="#asio">Boost.Asio Design</a></li>
+            <li><a href="#pipeline">Event Pipeline</a></li>
+            <li><a href="#compare">Design Variants</a></li>
+            <li><a href="#guest">QEMU Guest</a></li>
+            <li><a href="#related">Related Work</a></li>
+          </ol>
+        </nav>
+
+        <main>
+          <section id="overview">
+            <h2><span class="num">§1</span> Overview</h2>
+            <blockquote>
+              For setup, kernel version, and troubleshooting, see the top-level README. This document
+              covers the full source tree — the four canonical eBPF kernel programs, the three
+              user-space designs built on top of them, and the QEMU guest that runs all of it.
+            </blockquote>
+            <p>
+              This repository answers one question three times: <em>given the same four eBPF kernel
+              programs, how should user space consume the events they produce?</em> The kernel-side
+              logic never changes — <code>eBPF_basic_design/&lt;program&gt;/&lt;program&gt;.bpf.c</code>
+              is the single canonical copy of each hook, and it is the same compiled object whether it
+              is loaded by the procedural C loader, the OOP C++ loader, or the Boost.Asio loader. What
+              changes across the three designs is entirely the layer that receives a ring-buffer record
+              and turns it into a log line.
+            </p>
+            <ul>
+              <li><strong>Basic Design</strong> (<code>eBPF_basic_design/</code>) — a synchronous C
+                loader with a background pthread writer. No inheritance, no coroutines: one
+                <code>struct logutil_async_writer</code> per program, guarded by a mutex and a
+                condition variable.</li>
+              <li><strong>OOP Design</strong> (<code>eBPF_oop_design/</code>) — a C++ loader built
+                around one abstract base class (<code>BpfProgram</code>) and one action-dispatch
+                singleton (<code>ActionLoop</code>) driven by hand-written C++20 coroutines.</li>
+              <li><strong>Boost.Asio Design</strong> (<code>eBPF_boost_asio_design/</code>) — the same
+                <code>BpfProgram</code> hierarchy, <strong>reused unmodified</strong>, with only the
+                action-dispatch layer replaced by <code>boost::asio::io_context</code> and awaitable
+                coroutines.</li>
+            </ul>
+            <div class="note">
+              That last point is the one this whole document keeps returning to: the Boost.Asio design
+              is not a rewrite of the OOP design — it is the OOP design's kernel-facing half left alone,
+              and its async-facing half swapped out. See <a href="#asio">§6</a> for the literal proof.
+            </div>
+          </section>
+
+          <section id="build">
+            <h2><span class="num">§2</span> Build System</h2>
+            <h3>Three build systems, one kernel source of truth</h3>
+            <p>
+              <code>eBPF_basic_design/Makefile</code> is a plain Make build: it generates
+              <code>vmlinux.h</code> from <code>/sys/kernel/btf/vmlinux</code> with <code>bpftool</code>,
+              compiles each <code>.bpf.c</code> with <code>clang -target bpf</code>, and links each
+              loader against <code>-lbpf -lelf -lz -pthread</code>. Neither C++ design keeps its own
+              copy of this step. <code>eBPF_oop_design/CMakeLists.txt</code> and
+              <code>eBPF_boost_asio_design/CMakeLists.txt</code> both regenerate their own
+              <code>vmlinux.h</code> (the same <code>bpftool btf dump</code> command, run again in
+              their own build directory) and then compile
+              <code>../eBPF_basic_design/&lt;example&gt;/&lt;example&gt;.bpf.c</code> directly as a
+              custom command — there is no second source file to drift from the first, only a second
+              compiled artifact.
+            </p>
+            <div class="panel">
+              <div class="panel-label">Makefile</div>
+<pre>build: kernel ebpf_basic ebpf_oop ebpf_boost_asio rootfs
+
+ebpf_basic:
+	$(MAKE) -C eBPF_basic_design all
+
+ebpf_oop:
+	cmake -S eBPF_oop_design -B eBPF_oop_design/build
+	cmake --build eBPF_oop_design/build
+
+ebpf_boost_asio:
+	cmake -S eBPF_boost_asio_design -B eBPF_boost_asio_design/build
+	cmake --build eBPF_boost_asio_design/build</pre>
+            </div>
+            <p>
+              <code>make build</code> produces, per design, an install tree under
+              <code>/opt/ebpf_&lt;design&gt;/</code> — <code>&lt;program&gt;.bpf.o</code>,
+              <code>&lt;program&gt;_loader</code>, and (Boost.Asio only) an <code>action_runner</code>
+              used purely to force <code>ActionLoop::getInstance()</code> to start its thread at boot,
+              independent of any loader.
+            </p>
+
+            <h3>Why the Boost.Asio CMakeLists.txt reaches into two other directories</h3>
+            <div class="panel">
+              <div class="panel-label">eBPF_boost_asio_design/CMakeLists.txt</div>
+<pre>set(EOPPD_EBPF_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../eBPF_oop_design")
+set(EBPF_BASIC_SOURCE_DIR "${CMAKE_SOURCE_DIR}/../eBPF_basic_design")
+...
+add_executable(${example}_loader
+    ${EOPPD_EBPF_SOURCE_DIR}/ebpf/BpfProgram.cpp
+    ${EOPPD_EBPF_SOURCE_DIR}/${example}/${example}.cpp
+    ${EOPPD_SOURCE_DIR}/${example}/main.cpp
+    ${EOPPD_SOURCE_DIR}/actions/ActionLoop.cpp
+    ${EOPPD_SOURCE_DIR}/actions/LogAction.cpp
+)</pre>
+            </div>
+            <p>
+              Only two of the five source files listed there belong to
+              <code>eBPF_boost_asio_design/</code> itself (<code>main.cpp</code>, and its own
+              <code>ActionLoop.cpp</code> / <code>LogAction.cpp</code>). <code>BpfProgram.cpp</code> and
+              <code>&lt;example&gt;.cpp</code> are pulled from <code>eBPF_oop_design/</code> verbatim —
+              this build target does not declare a <code>XdpDropProgram</code> of its own, it links
+              against the OOP design's. This is not a build-system shortcut so much as the whole point
+              of the design: see <a href="#asio">§6</a>.
+            </p>
+          </section>
+
+          <section id="kernel">
+            <h2><span class="num">§3</span> Kernel Layer: <code>eBPF_basic_design/</code></h2>
+            <p>
+              Four programs, each attached to a different Linux hook, each emitting fixed-size event
+              records through a <code>BPF_MAP_TYPE_RINGBUF</code> map named <code>events</code>:
+            </p>
+            <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Program</th><th>Hook</th><th>In-kernel verdict</th><th>Ring buffer event</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>xdp_drop</code></td>
+                  <td><code>SEC("xdp")</code> on an interface</td>
+                  <td>None — always <code>XDP_PASS</code></td>
+                  <td><code>{ts_ns, pkt_len, ifindex, action}</code></td>
+                </tr>
+                <tr>
+                  <td><code>syscall_trace</code></td>
+                  <td><code>SEC("tracepoint/syscalls/sys_exit_{openat,read,write}")</code></td>
+                  <td>None — pure counter</td>
+                  <td>per-syscall event via <code>BPF_CORE_READ(args, id)</code></td>
+                </tr>
+                <tr>
+                  <td><code>socket_filter</code></td>
+                  <td><code>SEC("socket")</code> on a raw socket</td>
+                  <td>Allow TCP, drop non-TCP</td>
+                  <td><code>{action=allow|drop, src, dst, protocol}</code></td>
+                </tr>
+                <tr>
+                  <td><code>cgroup_egress</code></td>
+                  <td><code>SEC("cgroup_skb/egress")</code></td>
+                  <td>Deny ICMP, allow everything else</td>
+                  <td><code>{action=allow|deny, src, dst, protocol}</code></td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+            <p>
+              None of the four make a real security decision — <code>xdp_drop</code>'s name is
+              aspirational; it counts and observes, it does not drop. That is deliberate: this
+              repository is a teaching sandbox for the <em>plumbing</em> (CO-RE, ring buffers, async
+              user-space consumption), not a policy engine. Contrast this with
+              <a href="#related">HTTPS-Guard</a>, which reuses the same primitives to actually enforce
+              policy.
+            </p>
+            <p>
+              <code>vmlinux.h</code> is regenerated, never hand-edited:
+              <code>bpftool btf dump file /sys/kernel/btf/vmlinux format c &gt; vmlinux.h</code>. Where a
+              field's layout could vary between kernel builds (a nested kernel struct reached through a
+              pointer chain), the code should use <code>BPF_CORE_READ()</code> so libbpf can relocate
+              the offset from the target kernel's BTF; where the field is part of the hook's own context
+              ABI (<code>ctx-&gt;data_end</code> on <code>struct xdp_md</code>, <code>skb-&gt;len</code>
+              on <code>struct __sk_buff</code>), direct access is correct and is what all four programs
+              actually use. The one exception is <code>syscall_trace.bpf.c</code>, which reads
+              <code>args-&gt;id</code> off <code>struct trace_event_raw_sys_exit</code> — a real kernel
+              tracepoint struct, not a hook-context struct — through
+              <code>BPF_CORE_READ(args, id)</code>.
+            </p>
+          </section>
+
+          <section id="basic">
+            <h2><span class="num">§4</span> Basic Design: Procedural C</h2>
+            <p>
+              <code>eBPF_basic_design/&lt;program&gt;/&lt;program&gt;.c</code> is a small, synchronous
+              loader: open the <code>.bpf.o</code>, <code>bpf_object__load()</code>, attach
+              (<code>bpf_xdp_attach()</code>, <code>bpf_link__create()</code>, or the cgroup/socket
+              equivalent), then loop on <code>ring_buffer__poll()</code>. There is no class hierarchy
+              here to diagram — the four loaders share no code beyond <code>logging/log_utils.c</code>,
+              a pthread-based async writer:
+            </p>
+            <div class="panel">
+              <div class="panel-label">logging/log_utils.h — struct shape</div>
+<pre>struct logutil_async_writer
+    ├── fp, thread, lock (mutex), cond (condvar)
+    ├── queue[1024][256]   — fixed-size ring of pre-formatted lines
+    └── head / tail / count / dropped
+
+logutil_writer_enqueue(line)  → producer: copies into the ring, signals cond, never blocks on I/O
+writer thread                 → consumer: wakes on cond, drains queue, fwrite() + fflush()</pre>
+            </div>
+            <p>
+              This is the same shape the OOP and Boost.Asio designs later generalize into
+              <code>ActionLoop</code>: a bounded queue, one producer (the ring-buffer poll loop), one
+              consumer thread doing the blocking I/O, so a slow disk write never stalls
+              <code>ring_buffer__poll()</code> and risks dropping kernel events.
+            </p>
+          </section>
+
+          <section id="oop">
+            <h2><span class="num">§5</span> OOP Design: <code>BpfProgram</code> and <code>ActionLoop</code></h2>
+
+            <h3>BpfProgram — one base class, four independent siblings</h3>
+            <p>
+              This is the diagram an earlier version of this document got wrong: it drew
+              <code>BpfProgram → XdpDropProgram → SocketFilterProgram → SyscallTraceProgram</code> as a
+              left-to-right chain, which reads as if one hook calls the next. They don't. All four are
+              independent leaves inheriting from one abstract base — the correct picture is a tree, not
+              a pipeline:
+            </p>
+            <div class="class-tree">
+              <ul>
+                <li>
+                  <span class="chip chip-base">BpfProgram</span>
+                  <span class="chip-note">abstract · attachProgram() / detachProgram() /<br>getRingBufferHandler() = 0</span>
+                  <ul>
+                    <li>
+                      <span class="chip chip-kernel">XdpDropProgram</span>
+                      <span class="chip-note">ifindex_, attached_</span>
+                    </li>
+                    <li>
+                      <span class="chip chip-kernel">SocketFilterProgram</span>
+                      <span class="chip-note">ifindex_, sock_fd_</span>
+                    </li>
+                    <li>
+                      <span class="chip chip-kernel">SyscallTraceProgram</span>
+                      <span class="chip-note">3× bpf_program*,<br>3× bpf_link*</span>
+                    </li>
+                    <li>
+                      <span class="chip chip-kernel">CgroupEgressProgram</span>
+                      <span class="chip-note">cgroup_fd_, link_</span>
+                    </li>
+                  </ul>
+                </li>
+              </ul>
+            </div>
+            <p>
+              <code>loadFilter()</code> is the one non-virtual method that sequences everything:
+              <code>openObject()</code> → <code>bpf_object__load()</code> →
+              <code>attachProgram()</code> (deferred to the subclass) →
+              <code>registerEventHandler()</code>, which calls
+              <code>ring_buffer__new(map_fd, getRingBufferHandler(), this, nullptr)</code>. Because
+              <code>getRingBufferHandler()</code> returns a <code>static</code> member function pointer
+              with <code>this</code> passed as the ring buffer's opaque context, each subclass's
+              callback recovers its own instance with a single
+              <code>static_cast&lt;XdpDropProgram*&gt;(ctx)</code> — there is exactly one indirection
+              between "a ring buffer fired" and "the right subclass instance handles it," and it is
+              resolved once, at <code>registerEventHandler()</code> time, not per-event.
+            </p>
+            <p>
+              A hook's <code>ringBufferHandler()</code> is deliberately thin:
+            </p>
+            <div class="panel">
+              <div class="panel-label">xdp_drop.cpp</div>
+<pre>int XdpDropProgram::ringBufferHandler(void *ctx, void *data, size_t data_sz) {
+    ...
+    auto action = std::make_unique&lt;LogAction&gt;(std::string(line), self-&gt;log_path_);
+    ActionLoop::getInstance().pushAction(std::move(action));
+    return 0;
+}</pre>
+            </div>
+            <p>
+              Nothing about <code>BpfProgram</code> or its subclasses names <code>LogAction</code> or
+              <code>ActionLoop</code> in its interface — the coupling is confined to each hook's own
+              <code>ringBufferHandler()</code> body, which is free to push a different
+              <code>IAction</code> or none at all.
+            </p>
+
+            <h3>ActionLoop and IAction — a queue that owns what it dispatches</h3>
+            <div class="rel-row">
+              <div class="rel-node">
+                <span class="chip chip-kernel">IAction</span>
+                <span class="chip-note">abstract · execute_async() : FireForget</span>
+              </div>
+              <span class="rel-arrow">▲<br><small>implements</small></span>
+              <div class="rel-node">
+                <span class="chip chip-user">LogAction</span>
+                <span class="chip-note">message_, path_<br>static AsyncFileMutex g_file_mgr</span>
+              </div>
+            </div>
+            <div class="rel-row">
+              <div class="rel-node">
+                <span class="chip chip-user">ActionLoop</span>
+                <span class="chip-note">queue_, mutex_, cv_,<br>thread_ (pump())</span>
+              </div>
+              <span class="rel-arrow">──▶<br><small>owns 0..*</small></span>
+              <div class="rel-node">
+                <span class="chip chip-kernel">IAction</span>
+                <span class="chip-note">queued, then dequeued<br>&amp; destroyed by pump()</span>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-label">LogAction::execute_async()</div>
+<pre>co_await g_file_mgr.lock(path_);
+ofstream(path_, app) &lt;&lt; message_ &lt;&lt; "\n";
+g_file_mgr.unlock(path_);</pre>
+            </div>
+            <p>
+              <code>pushAction()</code> locks, <code>queue_.push()</code>s, and notifies — the caller
+              (the ring-buffer poll thread) never blocks on I/O. <code>pump()</code> is the single
+              consumer: it waits on the condvar, pops one action, and calls
+              <code>action-&gt;execute_async()</code> directly on the background thread. Because
+              <code>execute_async()</code> returns <code>FireForget</code> — a coroutine type whose
+              <code>initial_suspend()</code> is <code>suspend_never</code> — the call starts running
+              immediately, and the coroutine frame (not the <code>unique_ptr&lt;IAction&gt;</code>
+              itself) is what actually outlives <code>pump()</code>'s scope while a file lock is
+              pending.
+            </p>
+            <p>
+              That file lock is the one place this design suspends for real.
+              <code>AsyncFileMutex</code> is a coroutine-aware mutex keyed by filename:
+              <code>co_await lock(path)</code> either grabs the lock immediately
+              (<code>await_ready() == true</code>, no suspension) or, if another <code>LogAction</code>
+              already holds it, parks the coroutine handle in a per-file waiter queue and returns
+              control to <code>pump()</code> — which is then free to dequeue and start the
+              <em>next</em> action while the first one is still waiting on disk.
+              <code>unlock()</code> pops the next waiter, if any, and resumes it directly.
+              <code>Task&lt;T&gt;</code> (in <code>task.hpp</code>) is the more general awaitable of the
+              two coroutine types in <code>coroutine/</code>, with a real <code>promise_type</code>,
+              symmetric-transfer <code>final_awaiter</code>, and continuation-chaining;
+              <code>LogAction::execute_async()</code> doesn't currently need it, since it never awaits
+              another coroutine's result — but a future action composing several awaited steps would
+              return <code>Task&lt;void&gt;</code> rather than <code>FireForget</code>.
+            </p>
+          </section>
+
+          <section id="asio">
+            <h2><span class="num">§6</span> Boost.Asio Design: Same Hierarchy, New Executor</h2>
+            <p>
+              The single most important fact about this design is one a class diagram alone won't show:
+              <strong><code>eBPF_boost_asio_design/</code> does not define a <code>BpfProgram</code>, an
+              <code>XdpDropProgram</code>, or any of their three siblings.</strong> Its
+              <code>xdp_drop/main.cpp</code> includes them from the other directory outright:
+            </p>
+            <div class="panel">
+              <div class="panel-label">eBPF_boost_asio_design/xdp_drop/main.cpp</div>
+<pre>#include "../../eBPF_oop_design/xdp_drop/xdp_drop.hpp"</pre>
+            </div>
+            <p>
+              and its <code>CMakeLists.txt</code> compiles
+              <code>eBPF_oop_design/ebpf/BpfProgram.cpp</code> and
+              <code>eBPF_oop_design/xdp_drop/xdp_drop.cpp</code> into the Boost.Asio loader binary
+              directly. The kernel-facing half of the OOP design — attach, detach, ring-buffer polling,
+              the whole <code>BpfProgram</code> tree from <a href="#oop">§5</a> — is reused
+              byte-for-byte. What this design actually replaces is <code>IAction</code>,
+              <code>ActionLoop</code>, and <code>LogAction</code>'s <em>implementation</em> — same
+              three names, same responsibilities, different engine:
+            </p>
+            <div class="rel-row">
+              <div class="rel-node">
+                <span class="chip chip-warn">IAction</span>
+                <span class="chip-note">abstract · execute_async() : awaitable&lt;void&gt;<br>(was FireForget)</span>
+              </div>
+              <span class="rel-arrow">▲<br><small>implements</small></span>
+              <div class="rel-node">
+                <span class="chip chip-warn">LogAction</span>
+                <span class="chip-note">acquire_stream() replaces<br>AsyncFileMutex::lock()</span>
+              </div>
+            </div>
+            <div class="rel-row">
+              <div class="rel-node">
+                <span class="chip chip-warn">ActionLoop</span>
+                <span class="chip-note">io_context_, work_guard_,<br>thread_ (runs io_context_.run())</span>
+              </div>
+              <span class="rel-arrow">──▶<br><small>co_spawn, detached</small></span>
+              <div class="rel-node">
+                <span class="chip chip-warn">IAction</span>
+                <span class="chip-note">was: owns 0..* via queue_</span>
+              </div>
+            </div>
+            <div class="panel">
+              <div class="panel-label">LogAction::execute_async()</div>
+<pre>locked = co_await g_file_mgr.acquire_stream(path_);
+co_await asio::async_write(locked.stream(), buffer(payload), redirect_error(...));
+// LockedStream::~LockedStream() releases on scope exit</pre>
+            </div>
+            <p>
+              <code>AsyncFileStreamManager</code> (in
+              <code>eBPF_boost_asio_design/coroutine/async_mutex.hpp</code>) generalizes
+              <code>AsyncFileMutex</code> the same way <code>Task&lt;T&gt;</code> generalizes
+              <code>FireForget</code>: instead of a bare per-file lock, <code>acquire_stream()</code>
+              returns a move-only <code>LockedStream</code> RAII handle wrapping a cached
+              <code>boost::asio::posix::stream_descriptor</code>, keyed in a <code>stream_cache_</code>
+              map so a second <code>LogAction</code> writing to the same path reuses the already-open
+              file descriptor instead of paying <code>open()</code>/<code>close()</code> again.
+              Releasing the lock happens in <code>LockedStream</code>'s destructor rather than an
+              explicit <code>unlock()</code> call — the OOP design's <code>LogAction::execute_async()</code>
+              has to remember to call <code>g_file_mgr.unlock(path_)</code> itself; here that step
+              cannot be forgotten, because it is not a step, it is a destructor.
+            </p>
+            <p>
+              <code>work_guard_</code> is the detail that keeps this design's
+              <code>io_context_.run()</code> thread alive between events: an <code>io_context</code>
+              with an empty ready queue and no work guard simply returns from <code>run()</code>, which
+              would silently stop the background thread the first time the action queue drained to
+              empty. <code>executor_work_guard</code> is a no-op placeholder job that exists purely to
+              prevent that.
+            </p>
+          </section>
+
+          <section id="pipeline">
+            <h2><span class="num">§7</span> Event Processing Pipeline</h2>
+            <p>For the OOP design (Boost.Asio's differs only in the two lines marked below):</p>
+            <div class="panel">
+<pre>Kernel: xdp_drop.bpf.c / syscall_trace.bpf.c / socket_filter.bpf.c / cgroup_egress.bpf.c
+    │  bpf_ringbuf_reserve() → fill fields → bpf_ringbuf_submit()
+    ▼
+User space: &lt;Program&gt;::pollEvents() → ring_buffer__poll() (blocking, timeout_ms)
+    │
+    ▼
+libbpf invokes &lt;Program&gt;::ringBufferHandler(ctx, data, data_sz)   (static trampoline, per hook)
+    │
+    ├─ static_cast&lt;Derived*&gt;(ctx)             — recover the owning instance
+    ├─ format the event into one line
+    └─ ActionLoop::getInstance().pushAction(make_unique&lt;LogAction&gt;(line, log_path_))
+    │
+════════════════ back to poll loop immediately — this call never blocks ═══════════════
+    │
+    ▼
+ActionLoop::pushAction()
+    │  OOP:         lock mutex_ → queue_.push() → cv_.notify_one()
+    │  Boost.Asio:  asio::co_spawn(io_context_, ..., asio::detached)   ← different dispatch, same intent
+    ▼
+ActionLoop's own thread
+    │  OOP:         pump() wakes on cv_, pops queue_, calls action-&gt;execute_async() (starts inline)
+    │  Boost.Asio:  io_context_.run() resumes the spawned coroutine
+    ▼
+LogAction::execute_async()
+    │  OOP:         co_await AsyncFileMutex::lock(path)       → ofstream append → unlock(path)
+    │  Boost.Asio:  co_await AsyncFileStreamManager::acquire_stream(path) → async_write() → unlocks on scope exit
+    ▼
+/var/log/ebpf_&lt;design&gt;_design/&lt;program&gt;.events.log</pre>
+            </div>
+            <p>
+              The one property both C++ designs share, and the Basic Design's <code>log_utils.c</code>
+              shares with them: <strong>the poll loop that talks to the kernel never performs the
+              blocking I/O</strong>. Whatever happens between "an event arrived" and "a line is on disk"
+              happens on a different thread (Basic Design: the writer pthread; OOP: <code>pump()</code>;
+              Boost.Asio: <code>io_context_.run()</code>), so a slow or momentarily-locked log file
+              cannot cause <code>ring_buffer__poll()</code> to fall behind and start silently dropping
+              ring-buffer events under load.
+            </p>
+          </section>
+
+          <section id="compare">
+            <h2><span class="num">§8</span> Design Variants Compared</h2>
+            <div class="table-wrap">
+            <table>
+              <thead>
+                <tr><th>Aspect</th><th>Basic Design</th><th>OOP Design</th><th>Boost.Asio Design</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Language</td>
+                  <td>C + libbpf</td>
+                  <td>C++20 (custom coroutines)</td>
+                  <td>C++20 (Boost.Asio)</td>
+                </tr>
+                <tr>
+                  <td>Kernel-side <code>.bpf.c</code></td>
+                  <td>canonical, owns it</td>
+                  <td>reused from Basic Design</td>
+                  <td>reused from <strong>OOP</strong> Design</td>
+                </tr>
+                <tr>
+                  <td><code>BpfProgram</code>-equivalent</td>
+                  <td>none (four independent loaders)</td>
+                  <td><code>BpfProgram</code> + 4 subclasses</td>
+                  <td>same 4 classes, unmodified</td>
+                </tr>
+                <tr>
+                  <td>Async engine</td>
+                  <td>1 pthread + mutex/condvar ring buffer</td>
+                  <td>hand-written <code>Task</code>/<code>FireForget</code> + <code>queue_</code>/<code>cv_</code></td>
+                  <td><code>boost::asio::io_context</code> + awaitables</td>
+                </tr>
+                <tr>
+                  <td>File-write concurrency</td>
+                  <td><code>logutil_async_writer</code> (fixed ring, 1 writer thread)</td>
+                  <td><code>AsyncFileMutex</code> (per-filename lock)</td>
+                  <td><code>AsyncFileStreamManager</code> (per-filename lock + cached stream descriptor)</td>
+                </tr>
+                <tr>
+                  <td>Extra dependency</td>
+                  <td>none beyond libbpf</td>
+                  <td>none beyond libbpf + C++20</td>
+                  <td>libbpf + Boost 1.74+ + OpenSSL</td>
+                </tr>
+                <tr>
+                  <td>Best for</td>
+                  <td>learning eBPF fundamentals</td>
+                  <td>learning event-driven C++ design</td>
+                  <td>production-shaped async I/O</td>
+                </tr>
+              </tbody>
+            </table>
+            </div>
+          </section>
+
+          <section id="guest">
+            <h2><span class="num">§9</span> QEMU Guest Environment</h2>
+            <p>
+              <code>scripts/build-kernel.sh</code> builds Linux <code>6.1.94</code> by default
+              (overridable via <code>KERNEL_VERSION</code> or a <code>build-kernel.sh &lt;version&gt;</code>
+              argument) — an LTS release chosen for being feature-complete for BPF syscalls, BTF, CO-RE,
+              tracepoints, XDP, and cgroup hooks without tracking mainline.
+              <code>scripts/build-rootfs.sh</code> produces a minimal Alpine + BusyBox image sized by
+              <code>ROOTFS_SIZE</code> (default <code>512M</code>), and <code>guest/init</code> is the
+              guest's PID 1: it mounts <code>/proc</code>, <code>/sys</code>, <code>/cgroup2</code>
+              (cgroup v2), <code>/sys/fs/bpf</code>, and <code>tracefs</code>, then picks the first
+              non-loopback, non-tunnel network interface (<code>is_usable_iface()</code> filters out
+              <code>sit*</code>, <code>tunl*</code>, <code>gre*</code>, <code>dummy*</code>, …) for XDP
+              attachment and DHCP.
+            </p>
+            <div class="warn">
+              All three designs' artifacts are staged under <code>/opt/ebpf_&lt;design&gt;/</code>, but
+              <code>guest/init</code> only auto-starts two of them: the Basic Design's startup block is
+              wrapped in <code>if false; then ... fi</code> and is currently dead code, left in place as
+              a template rather than deleted.
+            </div>
+            <p>
+              For the OOP and Boost.Asio designs, <code>guest/init</code> starts, per design:
+              <code>action_runner</code> first (to start <code>ActionLoop</code>'s background thread
+              before any events can arrive), then <code>syscall_trace_loader</code>, then
+              <code>xdp_drop_loader</code> on the detected interface (guarded by a shared
+              <code>/tmp/xdp_loader_started</code> flag so only one design's XDP program attaches — only
+              one XDP program can bind a given interface at a time, so whichever design's block runs
+              first in the script wins it), then <code>socket_filter_loader</code> and
+              <code>cgroup_egress_loader</code>. Output goes to
+              <code>/var/log/ebpf_&lt;design&gt;_design/*.log</code> and <code>*.events.log</code>,
+              matching the pipeline in <a href="#pipeline">§7</a>.
+            </p>
+            <p>
+              <code>make qemu-net</code> (KVM, with a network interface attached) is the fastest path to
+              a fully wired environment; <code>make qemu-no-kvm</code> is the fallback where
+              <code>/proc/cpuinfo</code> shows no virtualization support.
+            </p>
+          </section>
+
+          <section id="related">
+            <h2><span class="num">§10</span> Related Work</h2>
+            <p>
+              <a href="https://github.com/JohnBlue-git/HTTPS-Guard">HTTPS-Guard</a> reuses the same
+              underlying primitives this repository teaches — a kernel-side hook (uprobe/XDP/LSM), a
+              ring buffer, and an async user-space consumer — but takes the observation one step further
+              into an actual <strong>Detect → Classify → Dispatch</strong> pipeline: a parsed event is
+              run through a synchronous rule (<code>IDetection::inspect()</code>) that returns a
+              <code>Verdict</code>, and an actionable verdict is handed to
+              <code>boost::asio</code>-driven enforcement actions (<code>SOCK_DESTROY</code> a
+              connection, write a kernel blocklist entry).
+            </p>
+            <p>
+              None of the four programs in this repository classify or enforce anything —
+              <code>xdp_drop</code> always returns <code>XDP_PASS</code>, and even
+              <code>socket_filter</code>'s "drop non-TCP" and <code>cgroup_egress</code>'s "deny ICMP"
+              are fixed, hard-coded rules rather than a pluggable rule engine. Reading this repository's
+              <code>BpfProgram</code> → <code>ActionLoop</code> → <code>LogAction</code> chain is a
+              reasonable on-ramp before reading HTTPS-Guard's <code>programs/</code> →
+              <code>detections/</code> → <code>actions/</code> split, since the latter is this
+              repository's shape with a classification layer inserted between "observed" and "logged."
+            </p>
+            <p>
+              For build instructions, kernel/rootfs configuration, and troubleshooting, see the
+              top-level <code>README.md</code>. For the rationale behind each individual design, the
+              root-level design documents go deeper than this document does on that design specifically:
+              <code>BASIC_DESIGN.md</code>, <code>OOP_DESIGN.md</code>, and
+              <code>BOOST_ASIO_DESIGN.md</code>.
+            </p>
+          </section>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

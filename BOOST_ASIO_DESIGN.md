@@ -327,7 +327,7 @@ To modify the io_context thread model:
 
 ## Related Documentation
 
-- [eBPF OOP Design](../eBPF_oop_design/README.md) — Custom coroutine-based async design
-- [eBPF Basic Design](../eBPF_basic_design/README.md) — Procedural C implementation
+- [OOP_DESIGN.md](OOP_DESIGN.md) — Custom coroutine-based async design
+- [BASIC_DESIGN.md](BASIC_DESIGN.md) — Procedural C implementation
 - [Boost.Asio Documentation](https://www.boost.org/doc/libs/master/doc/html/boost_asio.html)
 - [eBPF Linux Kernel Documentation](https://docs.kernel.org/bpf/)
