@@ -329,5 +329,6 @@ To modify the io_context thread model:
 
 - [OOP_DESIGN.md](OOP_DESIGN.md) — Custom coroutine-based async design
 - [BASIC_DESIGN.md](BASIC_DESIGN.md) — Procedural C implementation
+- [BPFTOOL.md](BPFTOOL.md) — Target-kernel capability probing and attach diagnostics
 - [Boost.Asio Documentation](https://www.boost.org/doc/libs/master/doc/html/boost_asio.html)
 - [eBPF Linux Kernel Documentation](https://docs.kernel.org/bpf/)
